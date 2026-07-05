@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AetherProxy Quick Switcher</title>
+  <link rel="stylesheet" href="./src/popup/popup.css">
+</head>
+<body>
+  <div id="app" class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="logo-icon" style="color: var(--accent);"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        <span class="logo-text">AetherProxy</span>
+      </div>
+      <button id="open-settings" class="icon-btn" title="Configure Profiles & Rules">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </header>
+
+    <!-- Profiles List -->
+    <main class="profiles-list">
+      <!-- Built-in modes -->
+      <div class="profile-item" data-id="system">
+        <div class="profile-bullet system"></div>
+        <div class="profile-info">
+          <div class="profile-name">System Default</div>
+          <div class="profile-meta">Use browser system proxy settings</div>
+        </div>
+      </div>
+      
+      <div class="profile-item" data-id="direct">
+        <div class="profile-bullet direct"></div>
+        <div class="profile-info">
+          <div class="profile-name">Direct Mode</div>
+          <div class="profile-meta">No proxy servers; bypass all routing</div>
+        </div>
+      </div>
+      
+      <div class="profile-item" data-id="auto-switch">
+        <div class="profile-bullet switch"></div>
+        <div class="profile-info">
+          <div class="profile-name">Auto Switch</div>
+          <div class="profile-meta">Route domains dynamically based on rules</div>
+        </div>
+      </div>
+
+      <!-- User-defined custom profiles list divider -->
+      <div class="divider">Custom Proxy Profiles</div>
+      
+      <div id="custom-profiles-container">
+        <!-- Rendered via JS -->
+      </div>
+      
+      <div id="empty-custom-state" class="empty-state" style="display: none;">
+        No custom profiles configured. Click the gear icon above to add your first proxy server.
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div id="status-light" class="status-light system"></div>
+      <div class="status-text">Active Mode: <span id="active-mode-label" style="font-weight: 700; color: white;">System</span></div>
+    </footer>
+  </div>
+  <script type="module" src="./src/popup/popup.js"></script>
+</body>
+</html>
