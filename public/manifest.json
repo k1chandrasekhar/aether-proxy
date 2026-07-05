@@ -6,7 +6,8 @@
   "permissions": [
     "proxy",
     "storage",
-    "webRequest"
+    "webRequest",
+    "webRequestAuthProvider"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -15,9 +16,21 @@
     "service_worker": "service-worker.js",
     "type": "module"
   },
+  "icons": {
+    "16": "favicon.svg",
+    "32": "favicon.svg",
+    "48": "favicon.svg",
+    "128": "favicon.svg"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "AetherProxy Quick Switcher"
+    "default_title": "AetherProxy Quick Switcher",
+    "default_icon": {
+      "16": "favicon.svg",
+      "32": "favicon.svg",
+      "48": "favicon.svg",
+      "128": "favicon.svg"
+    }
   },
   "options_ui": {
     "page": "options.html",

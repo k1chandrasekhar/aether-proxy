@@ -11,21 +11,26 @@
     
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
-      <div class="logo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent);"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-        <span class="logo-text">AetherProxy</span>
+      <div class="sidebar-header">
+        <div class="logo">
+          <img src="favicon.svg" width="20" height="20" alt="AetherProxy Logo" class="logo-icon">
+          <span class="logo-text">AetherProxy</span>
+        </div>
+        <button id="sidebar-toggle" class="sidebar-toggle-btn" data-tooltip="Collapse Sidebar">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="toggle-icon"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
       </div>
       
       <nav class="nav-menu">
-        <button class="nav-btn active" data-tab="profiles">
+        <button class="nav-btn active" data-tab="profiles" data-tooltip="Proxy Profiles">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></svg>
           <span>Proxy Profiles</span>
         </button>
-        <button class="nav-btn" data-tab="rules">
+        <button class="nav-btn" data-tab="rules" data-tooltip="Auto Switch Rules">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.886H3.883l5.068 3.682-1.937 5.962L12 14.84l4.986 3.69-1.937-5.962 5.068-3.682h-6.205L12 3z"/></svg>
           <span>Auto Switch Rules</span>
         </button>
-        <button class="nav-btn" data-tab="settings">
+        <button class="nav-btn" data-tab="settings" data-tooltip="Import / Export Settings">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
           <span>Import / Export</span>
         </button>
@@ -143,7 +148,7 @@
           </button>
         </div>
 
-        <div class="glass-panel" style="padding: 20px; display: flex; flexDirection: column; gap: 20px;">
+        <div class="glass-panel" style="padding: 24px; display: flex; flex-direction: column; gap: 20px;">
           <!-- Default profile fallback picker -->
           <div class="fallback-row">
             <div>

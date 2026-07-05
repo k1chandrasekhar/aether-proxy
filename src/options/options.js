@@ -48,8 +48,9 @@ const settingsStatusMsg = document.getElementById('settings-status-msg');
 let importedConfigData = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Initialize Tabs Navigation
+  // 1. Initialize Tabs & Sidebar Layout
   initTabs();
+  initSidebar();
 
   // 2. Load settings from storage
   await loadAllSettings();
@@ -635,4 +636,31 @@ function escapeHTML(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+// ----------------------------------------------------
+// COLLAPSIBLE SIDEBAR
+// ----------------------------------------------------
+function initSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const toggleBtn = document.getElementById('sidebar-toggle');
+
+  if (!sidebar || !toggleBtn) return;
+
+  // Apply initial state from local storage
+  chrome.storage.local.get(['sidebarCollapsed'], (result) => {
+    if (result.sidebarCollapsed) {
+      sidebar.classList.add('collapsed');
+      toggleBtn.setAttribute('data-tooltip', 'Expand Sidebar');
+      toggleBtn.setAttribute('title', 'Expand Sidebar');
+    }
+  });
+
+  // Toggle state on click
+  toggleBtn.addEventListener('click', () => {
+    const isCollapsed = sidebar.classList.toggle('collapsed');
+    toggleBtn.setAttribute('data-tooltip', isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar');
+    toggleBtn.setAttribute('title', isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar');
+    chrome.storage.local.set({ sidebarCollapsed: isCollapsed });
+  });
 }

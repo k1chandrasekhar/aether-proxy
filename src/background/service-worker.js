@@ -174,10 +174,13 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-// Proxy Credentials challenge interceptor (Sync Auth)
+// Proxy Credentials challenge interceptor (Async Auth for Manifest V3)
 chrome.webRequest.onAuthRequired.addListener(
-  (details) => {
-    if (!details.isProxy) return {};
+  (details, callback) => {
+    if (!details.isProxy) {
+      callback({});
+      return;
+    }
 
     console.log(`Proxy auth requested by ${details.challenger.host}:${details.challenger.port}`);
 
@@ -192,17 +195,18 @@ chrome.webRequest.onAuthRequired.addListener(
         parseInt(prof.port) === details.challenger.port
       ) {
         console.log(`Supplying credentials for proxy profile "${prof.name}"`);
-        return {
+        callback({
           authCredentials: {
             username: prof.username,
             password: prof.password
           }
-        };
+        });
+        return;
       }
     }
 
-    return {};
+    callback({});
   },
   { urls: ['<all_urls>'] },
-  ['blocking']
+  ['asyncBlocking']
 );
