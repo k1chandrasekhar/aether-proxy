@@ -280,8 +280,6 @@ body {
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   padding: 10px 14px;
-  max-height: 140px;
-  overflow-y: auto;
   margin-bottom: 6px;
 }
 
@@ -432,23 +430,33 @@ body {
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   padding: 10px 14px;
-  max-height: 160px;
-  overflow-y: auto;
   margin-bottom: 6px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.audit-row {
+.audit-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.audit-item:last-of-type {
+  border-bottom: none;
+}
+
+.audit-item-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 2px 0;
 }
 
 .audit-label {
   font-size: 11px;
+  font-weight: 600;
   color: var(--text-secondary);
 }
 
@@ -456,6 +464,13 @@ body {
   font-size: 11px;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.audit-help-text {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin: 0;
 }
 
 .trackers-list {

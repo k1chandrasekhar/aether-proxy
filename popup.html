@@ -73,13 +73,20 @@
 
       <!-- Privacy Audit Drawer -->
       <div id="privacy-audit-drawer" class="privacy-audit-drawer" style="display: none;">
-        <div class="audit-row">
-          <span class="audit-label">Local Cookies:</span>
-          <span id="audit-cookies-count" class="audit-value">0 cookies</span>
+        <div class="audit-item">
+          <div class="audit-item-header">
+            <span class="audit-label">Website Cookies</span>
+            <span id="audit-cookies-count" class="audit-value">0 cookies</span>
+          </div>
+          <p class="audit-help-text">Data files stored locally in your browser. These are typically used to remember your settings or keep you logged into your account.</p>
         </div>
-        <div class="audit-row">
-          <span class="audit-label">Third-Party Loads:</span>
-          <span id="audit-trackers-count" class="audit-value">0 trackers</span>
+        
+        <div class="audit-item">
+          <div class="audit-item-header">
+            <span class="audit-label">Third-Party Connections</span>
+            <span id="audit-trackers-count" class="audit-value">0 trackers</span>
+          </div>
+          <p class="audit-help-text">External servers (ads, social widgets, analytics trackers) embedded on this page. You can route them individually below.</p>
         </div>
         
         <div id="trackers-sublist-container" style="margin-top: 8px; display: none;">
