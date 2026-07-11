@@ -862,14 +862,24 @@ body.light-theme .card-title {
   color: var(--text-primary);
 }
 
+body.light-theme .rules-table-container {
+  background: rgba(15, 23, 42, 0.02);
+  box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
 body.light-theme .rules-table th {
-  background: rgba(0, 0, 0, 0.02);
+  background: rgba(15, 23, 42, 0.02);
   color: var(--text-secondary);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 body.light-theme .rules-table td {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+body.light-theme .empty-state {
+  color: var(--text-secondary);
 }
 
 body.light-theme .delete-rule-btn {

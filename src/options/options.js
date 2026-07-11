@@ -757,6 +757,12 @@ function setTheme(theme) {
     // Set to sun icon
     themeToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon-light"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
   }
+
+  // Hot-reload latency graph with new theme colors if active profile editor is open
+  const activeEditId = document.getElementById('edit-profile-id')?.value;
+  if (activeEditId) {
+    drawLatencyGraph(activeEditId);
+  }
 }
 
 function initPrivacyTab() {
@@ -1294,10 +1300,12 @@ function drawLatencyGraph(profileId) {
     // Pad max latency so points don't clip at top
     maxLatency = Math.ceil(maxLatency * 1.25);
 
-    // Draw horizontal grid lines and text labels
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    const isLightTheme = document.body.classList.contains('light-theme');
+
+    // Draw horizontal grid lines and text labels dynamically themed
+    ctx.strokeStyle = isLightTheme ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.fillStyle = isLightTheme ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.4)';
     ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textBaseline = 'middle';
 
@@ -1334,7 +1342,7 @@ function drawLatencyGraph(profileId) {
     ctx.save();
     ctx.strokeStyle = '#6366f1'; // Indigo neon line
     ctx.lineWidth = 2.5;
-    ctx.shadowColor = 'rgba(99, 102, 241, 0.5)';
+    ctx.shadowColor = isLightTheme ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.5)';
     ctx.shadowBlur = 8;
     ctx.stroke();
     ctx.restore();
@@ -1345,7 +1353,7 @@ function drawLatencyGraph(profileId) {
     ctx.closePath();
 
     const gradient = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphHeight);
-    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.15)');
+    gradient.addColorStop(0, isLightTheme ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.15)');
     gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
     ctx.fillStyle = gradient;
     ctx.fill();
