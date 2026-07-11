@@ -26,8 +26,8 @@
 }
 
 body {
-  width: 340px;
-  height: 540px;
+  width: 380px;
+  height: 580px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
   overflow: hidden;
@@ -318,7 +318,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 175px;
+  max-width: 215px;
 }
 
 .failed-domain-select {
@@ -360,7 +360,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 250px;
+  max-width: 290px;
 }
 
 .quick-route-selector-row {
