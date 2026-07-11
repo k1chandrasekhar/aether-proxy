@@ -569,7 +569,7 @@ function exportSettings() {
   chrome.storage.local.get(null, (allData) => {
     const backupData = {
       app: 'AetherProxy',
-      version: '1.0.0',
+      version: '1.0.1',
       exportedAt: new Date().toISOString(),
       profiles: allData.profiles || {},
       rules: allData.rules || [],
