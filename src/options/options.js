@@ -1248,7 +1248,6 @@ function checkQueryImport() {
   }
 }
 
-// Draw HTML5 Canvas latency history line graph
 function drawLatencyGraph(profileId) {
   const container = document.getElementById('latency-graph-container');
   const canvas = document.getElementById('latency-history-canvas');
@@ -1264,44 +1263,63 @@ function drawLatencyGraph(profileId) {
     }
 
     container.style.display = 'flex';
+
+    // High-DPI Resolution Scaling (Ensures crystal-clear lines & fonts)
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+
     const ctx = canvas.getContext('2d');
-    
+    ctx.scale(dpr, dpr);
+
+    const width = rect.width;
+    const height = rect.height;
+
     // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, width, height);
 
-    const padding = 20;
-    const graphWidth = canvas.width - padding * 2;
-    const graphHeight = canvas.height - padding * 2;
+    const paddingLeft = 50; // Breathing room for y-axis labels
+    const paddingRight = 20;
+    const paddingTop = 20;
+    const paddingBottom = 20;
 
-    // Find min and max latency for scaling
-    let maxLatency = Math.max(...history, 100);
-    let minLatency = 0;
-    
-    // Pad max latency slightly
-    maxLatency = Math.ceil(maxLatency * 1.2);
+    const graphWidth = width - paddingLeft - paddingRight;
+    const graphHeight = height - paddingTop - paddingBottom;
 
-    // Draw grid lines
+    // Find max latency for scaling
+    let maxLatency = Math.max(...history, 50);
+    // Pad max latency so points don't clip at top
+    maxLatency = Math.ceil(maxLatency * 1.25);
+
+    // Draw horizontal grid lines and text labels
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
-    for (let i = 0; i <= 2; i++) {
-      const y = padding + (graphHeight / 2) * i;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textBaseline = 'middle';
+
+    const gridLines = 3;
+    for (let i = 0; i < gridLines; i++) {
+      const ratio = i / (gridLines - 1);
+      const y = paddingTop + graphHeight * ratio;
+
       ctx.beginPath();
-      ctx.moveTo(padding, y);
-      ctx.lineTo(canvas.width - padding, y);
+      ctx.moveTo(paddingLeft, y);
+      ctx.lineTo(width - paddingRight, y);
       ctx.stroke();
 
       // Label values
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-      ctx.font = '8px sans-serif';
-      const labelVal = Math.round(maxLatency - (maxLatency / 2) * i);
-      ctx.fillText(`${labelVal}ms`, padding - 15, y + 3);
+      const val = Math.round(maxLatency * (1 - ratio));
+      ctx.fillText(`${val}ms`, 12, y);
     }
 
-    // Plot points
+    // Plot chart line
     ctx.beginPath();
     history.forEach((ms, index) => {
-      const x = padding + (graphWidth / (history.length - 1 || 1)) * index;
-      const y = padding + graphHeight - (ms / maxLatency) * graphHeight;
+      const ratio = index / (history.length - 1 || 1);
+      const x = paddingLeft + graphWidth * ratio;
+      const y = paddingTop + graphHeight - (ms / maxLatency) * graphHeight;
 
       if (index === 0) {
         ctx.moveTo(x, y);
@@ -1310,36 +1328,38 @@ function drawLatencyGraph(profileId) {
       }
     });
 
-    // Stroke the line
-    ctx.strokeStyle = '#6366f1'; // Indigo color
+    // Save and stroke chart line with glow effect
+    ctx.save();
+    ctx.strokeStyle = '#6366f1'; // Indigo neon line
     ctx.lineWidth = 2.5;
-    ctx.shadowColor = 'rgba(99, 102, 241, 0.4)';
-    ctx.shadowBlur = 6;
+    ctx.shadowColor = 'rgba(99, 102, 241, 0.5)';
+    ctx.shadowBlur = 8;
     ctx.stroke();
-    ctx.shadowBlur = 0; // Reset shadow
+    ctx.restore();
 
     // Fill area below the line with gradient
-    ctx.lineTo(padding + graphWidth, padding + graphHeight);
-    ctx.lineTo(padding, padding + graphHeight);
+    ctx.lineTo(paddingLeft + graphWidth, paddingTop + graphHeight);
+    ctx.lineTo(paddingLeft, paddingTop + graphHeight);
     ctx.closePath();
-    
-    const gradient = ctx.createLinearGradient(0, padding, 0, padding + graphHeight);
-    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.2)');
+
+    const gradient = ctx.createLinearGradient(0, paddingTop, 0, paddingTop + graphHeight);
+    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.15)');
     gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
     ctx.fillStyle = gradient;
     ctx.fill();
 
-    // Draw circles on the points
+    // Draw high-contrast data point dots
     history.forEach((ms, index) => {
-      const x = padding + (graphWidth / (history.length - 1 || 1)) * index;
-      const y = padding + graphHeight - (ms / maxLatency) * graphHeight;
+      const ratio = index / (history.length - 1 || 1);
+      const x = paddingLeft + graphWidth * ratio;
+      const y = paddingTop + graphHeight - (ms / maxLatency) * graphHeight;
 
       ctx.beginPath();
-      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
       ctx.fillStyle = '#818cf8';
       ctx.fill();
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     });
   });
