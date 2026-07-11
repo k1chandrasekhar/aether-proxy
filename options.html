@@ -30,6 +30,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.886H3.883l5.068 3.682-1.937 5.962L12 14.84l4.986 3.69-1.937-5.962 5.068-3.682h-6.205L12 3z"/></svg>
           <span>Auto Switch Rules</span>
         </button>
+        <button class="nav-btn" data-tab="privacy" data-tooltip="Privacy & Security">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <span>Privacy & Security</span>
+        </button>
         <button class="nav-btn" data-tab="settings" data-tooltip="Import / Export Settings">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
           <span>Import / Export</span>
@@ -37,6 +41,9 @@
       </nav>
 
       <div class="sidebar-footer">
+        <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Theme" style="margin-bottom: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="theme-icon-light"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        </button>
         <div class="ver-label">Version 1.0.0</div>
         <div class="ver-desc">Manifest V3 Secure</div>
       </div>
@@ -232,6 +239,68 @@
 
         </div>
         <div id="settings-status-msg" class="status-msg" style="display: none; margin-top: 16px;"></div>
+      </section>
+
+      <!-- Tab: Privacy & Security -->
+      <section id="tab-privacy" class="tab-section">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">Privacy & Security Settings</h2>
+            <p class="section-desc">Enforce WebRTC protections and configure background proxy health pings.</p>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 24px; display: flex; flex-direction: column; gap: 24px;">
+          <!-- WebRTC Card -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
+            <div style="flex: 1; padding-right: 20px;">
+              <h3 class="card-title" style="margin-bottom: 6px;">WebRTC Leak Shield</h3>
+              <p class="card-desc" style="margin: 0; line-height: 1.5;">Prevent target websites from bypassing your active proxy configurations and exposing your local/public IP addresses. Once active, WebRTC media tunnels are strictly routed through AetherProxy.</p>
+            </div>
+            <label class="switch-toggle">
+              <input type="checkbox" id="webrtc-shield-toggle">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+
+          <!-- Health Check Card -->
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div style="flex: 1; padding-right: 20px;">
+                <h3 class="card-title" style="margin-bottom: 6px;">Active Proxy Health Monitor</h3>
+                <p class="card-desc" style="margin: 0; line-height: 1.5;">Enable background health pings to check active proxy availability. If a proxy drops twice consecutively, AetherProxy will route traffic to your failover fallback route and trigger a notification.</p>
+              </div>
+              <label class="switch-toggle">
+                <input type="checkbox" id="health-check-toggle">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div id="health-check-config-area" style="display: none; padding-top: 10px; flex-direction: column; gap: 16px;">
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="form-group">
+                  <label class="form-label" for="health-check-interval-select">Ping Check Interval</label>
+                  <select id="health-check-interval-select" class="form-select">
+                    <option value="15000">Every 15 Seconds</option>
+                    <option value="30000">Every 30 Seconds</option>
+                    <option value="60000" selected>Every 60 Seconds</option>
+                    <option value="120000">Every 2 Minutes</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="health-fallback-select">Failover Fallback Profile</label>
+                  <select id="health-fallback-select" class="form-select">
+                    <option value="direct" selected>DIRECT (No Proxy)</option>
+                    <!-- Custom profiles populated via JS -->
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button id="save-privacy-btn" class="btn btn-primary" style="margin-top: 20px;">Save Privacy Settings</button>
+        <div id="privacy-status-msg" class="status-msg" style="display: none; margin-top: 16px;"></div>
       </section>
 
     </main>

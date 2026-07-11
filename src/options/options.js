@@ -1,5 +1,12 @@
 // AetherProxy Dashboard Options Logic
 
+// Apply theme instantly on startup
+chrome.storage.local.get(['theme'], (res) => {
+  if (res.theme === 'light') {
+    document.body.classList.add('light-theme');
+  }
+});
+
 let profiles = {};
 let rules = [];
 let activeProfileId = 'system';
@@ -69,6 +76,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 5. Bind Events for Rules
   addRuleBtn.addEventListener('click', addNewRuleRow);
   saveRulesBtn.addEventListener('click', saveRulesConfig);
+
+  // 6. Bind Events for Privacy & Theme
+  initPrivacyTab();
+  initTheme();
 });
 
 // Helper: Load all settings from Local Storage
@@ -663,4 +674,132 @@ function initSidebar() {
     toggleBtn.setAttribute('title', isCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar');
     chrome.storage.local.set({ sidebarCollapsed: isCollapsed });
   });
+}
+
+// ----------------------------------------------------
+// THEME & PRIVACY CONTROL LOGIC
+// ----------------------------------------------------
+function initTheme() {
+  const themeToggle = document.getElementById('theme-toggle-btn');
+  if (!themeToggle) return;
+
+  chrome.storage.local.get(['theme'], (result) => {
+    const theme = result.theme || 'dark';
+    setTheme(theme);
+  });
+
+  themeToggle.addEventListener('click', () => {
+    chrome.storage.local.get(['theme'], (result) => {
+      const currentTheme = result.theme || 'dark';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      setTheme(newTheme);
+      chrome.storage.local.set({ theme: newTheme });
+    });
+  });
+}
+
+function setTheme(theme) {
+  const themeToggle = document.getElementById('theme-toggle-btn');
+  if (!themeToggle) return;
+  
+  if (theme === 'light') {
+    document.body.classList.add('light-theme');
+    // Set to moon icon
+    themeToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon-dark"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+  } else {
+    document.body.classList.remove('light-theme');
+    // Set to sun icon
+    themeToggle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon-light"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
+  }
+}
+
+function initPrivacyTab() {
+  const webrtcToggle = document.getElementById('webrtc-shield-toggle');
+  const healthToggle = document.getElementById('health-check-toggle');
+  const configArea = document.getElementById('health-check-config-area');
+  const intervalSelect = document.getElementById('health-check-interval-select');
+  const fallbackSelect = document.getElementById('health-fallback-select');
+  const saveBtn = document.getElementById('save-privacy-btn');
+  const statusMsg = document.getElementById('privacy-status-msg');
+
+  if (!webrtcToggle || !healthToggle || !saveBtn) return;
+
+  // Toggle config area visibility
+  healthToggle.addEventListener('change', () => {
+    configArea.style.display = healthToggle.checked ? 'flex' : 'none';
+  });
+
+  // Populate options and load initial values
+  chrome.storage.local.get(
+    ['profiles', 'webrtcShieldEnabled', 'healthCheckEnabled', 'healthCheckInterval', 'fallbackProfileId'],
+    (result) => {
+      const profilesData = result.profiles || {};
+      
+      // Populate select
+      fallbackSelect.innerHTML = '<option value="direct">DIRECT (No Proxy)</option>';
+      Object.keys(profilesData).forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = profilesData[id].name;
+        fallbackSelect.appendChild(opt);
+      });
+
+      // Load values
+      webrtcToggle.checked = result.webrtcShieldEnabled || false;
+      healthToggle.checked = result.healthCheckEnabled || false;
+      configArea.style.display = healthToggle.checked ? 'flex' : 'none';
+      
+      if (result.healthCheckInterval) {
+        intervalSelect.value = String(result.healthCheckInterval);
+      }
+      if (result.fallbackProfileId) {
+        fallbackSelect.value = result.fallbackProfileId;
+      }
+    }
+  );
+
+  // Save settings click listener
+  saveBtn.addEventListener('click', () => {
+    const webrtcEnabled = webrtcToggle.checked;
+    const healthEnabled = healthToggle.checked;
+    const checkInterval = parseInt(intervalSelect.value);
+    const fallbackId = fallbackSelect.value;
+
+    const privacySettings = {
+      webrtcShieldEnabled: webrtcEnabled,
+      healthCheckEnabled: healthEnabled,
+      healthCheckInterval: checkInterval,
+      fallbackProfileId: fallbackId
+    };
+
+    chrome.storage.local.set(privacySettings, () => {
+      // Set WebRTC IP handling policy
+      if (chrome.privacy && chrome.privacy.network) {
+        chrome.privacy.network.webRTCIPHandlingPolicy.set({
+          value: webrtcEnabled ? 'disable_non_proxied_udp' : 'default'
+        }, () => {
+          if (chrome.runtime.lastError) {
+            console.error('Error applying WebRTC policy:', chrome.runtime.lastError.message);
+            showStatusMessage(statusMsg, 'Error applying WebRTC policy settings.', true);
+          } else {
+            showStatusMessage(statusMsg, 'Privacy and security settings saved successfully!', false);
+          }
+        });
+      } else {
+        showStatusMessage(statusMsg, 'Privacy settings saved locally (WebRTC API unavailable).', false);
+      }
+    });
+  });
+}
+
+function showStatusMessage(elem, msg, isErr) {
+  elem.style.display = 'block';
+  elem.textContent = msg;
+  elem.style.background = isErr ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)';
+  elem.style.borderColor = isErr ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)';
+  elem.style.color = isErr ? '#fca5a5' : '#a7f3d0';
+
+  setTimeout(() => {
+    elem.style.display = 'none';
+  }, 4000);
 }

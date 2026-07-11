@@ -9,7 +9,10 @@
     "webRequest",
     "webRequestAuthProvider",
     "tabs",
-    "webNavigation"
+    "webNavigation",
+    "privacy",
+    "cookies",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"

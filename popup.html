@@ -14,9 +14,14 @@
         <img src="icon-32.png" width="16" height="16" alt="AetherProxy" class="logo-icon">
         <span class="logo-text">AetherProxy</span>
       </div>
-      <button id="open-settings" class="icon-btn" title="Configure Profiles & Rules">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-      </button>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button id="theme-toggle-btn" class="icon-btn" title="Toggle Theme">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon-light"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        </button>
+        <button id="open-settings" class="icon-btn" title="Configure Profiles & Rules">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
     </header>
 
     <!-- Profiles List -->
@@ -60,6 +65,31 @@
         </div>
       </div>
 
+      <!-- Privacy Audit Toggle Tile -->
+      <div id="privacy-audit-btn" class="privacy-audit-tile">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; color: var(--color-direct);"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Privacy Audit & Trackers</span>
+      </div>
+
+      <!-- Privacy Audit Drawer -->
+      <div id="privacy-audit-drawer" class="privacy-audit-drawer" style="display: none;">
+        <div class="audit-row">
+          <span class="audit-label">Local Cookies:</span>
+          <span id="audit-cookies-count" class="audit-value">0 cookies</span>
+        </div>
+        <div class="audit-row">
+          <span class="audit-label">Third-Party Loads:</span>
+          <span id="audit-trackers-count" class="audit-value">0 trackers</span>
+        </div>
+        
+        <div id="trackers-sublist-container" style="margin-top: 8px; display: none;">
+          <div class="drawer-header" style="margin-top: 4px; font-size: 8.5px;">External Tracker Domains:</div>
+          <div id="trackers-list" class="trackers-list">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+
       <!-- User-defined custom profiles list divider -->
       <div class="divider">Custom Proxy Profiles</div>
       
@@ -74,9 +104,15 @@
 
     <!-- Quick Rule Creator (Active Domain Router) -->
     <div id="quick-route-panel" class="quick-route-panel" style="display: none;">
-      <div class="quick-route-label">
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="filter-icon"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-        <span id="active-domain-name" class="active-domain-text">Detecting site...</span>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="quick-route-label">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="filter-icon"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          <span id="active-domain-name" class="active-domain-text">Detecting site...</span>
+        </div>
+        <label class="session-checkbox-label" title="Keep this rule for the current browser session only" style="display: flex; align-items: center; cursor: pointer;">
+          <input type="checkbox" id="quick-route-session-only" style="cursor: pointer;">
+          <span style="font-size: 10px; color: var(--text-secondary); margin-left: 4px;">Session Only</span>
+        </label>
       </div>
       <div class="quick-route-selector-row">
         <select id="quick-route-profile-select" class="quick-route-select">

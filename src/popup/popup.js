@@ -1,5 +1,12 @@
 // AetherProxy Popup Logic
 
+// Apply theme instantly on startup
+chrome.storage.local.get(['theme'], (res) => {
+  if (res.theme === 'light') {
+    document.body.classList.add('light-theme');
+  }
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
   const customContainer = document.getElementById('custom-profiles-container');
   const emptyState = document.getElementById('empty-custom-state');
@@ -11,10 +18,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   const failedDrawer = document.getElementById('failed-resources-drawer');
   const failedList = document.getElementById('failed-domains-list');
 
+  const privacyBtn = document.getElementById('privacy-audit-btn');
+  const privacyDrawer = document.getElementById('privacy-audit-drawer');
+  const cookiesCountLabel = document.getElementById('audit-cookies-count');
+  const trackersCountLabel = document.getElementById('audit-trackers-count');
+  const trackersContainer = document.getElementById('trackers-sublist-container');
+  const trackersList = document.getElementById('trackers-list');
+
   const quickRoutePanel = document.getElementById('quick-route-panel');
   const activeDomainLabel = document.getElementById('active-domain-name');
   const quickSelect = document.getElementById('quick-route-profile-select');
+  const quickSessionCheckbox = document.getElementById('quick-route-session-only');
   const addQuickRuleBtn = document.getElementById('add-quick-rule-btn');
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
 
   let profiles = {};
   let rules = [];
@@ -22,50 +38,59 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentTabId = null;
   let activeDomain = '';
 
-  // 1. Load and render current profiles
-  chrome.storage.local.get(['profiles', 'rules', 'activeProfileId'], (result) => {
-    profiles = result.profiles || {};
-    rules = result.rules || [];
-    activeProfileId = result.activeProfileId || 'system';
+  // Initialize Theme Toggle UI state
+  initThemeUI();
 
-    // Update UI Selection for Built-in Modes
-    updateSelectionInDOM(activeProfileId);
+  // 1. Load and render current profiles & rules
+  chrome.storage.local.get(['profiles', 'rules', 'activeProfileId'], (localResult) => {
+    chrome.storage.session.get(['rules'], (sessionResult) => {
+      profiles = localResult.profiles || {};
+      const localRules = localResult.rules || [];
+      const sessionRules = sessionResult.rules || [];
 
-    // Render Custom Profiles
-    const customProfileIds = Object.keys(profiles);
-    
-    if (customProfileIds.length === 0) {
-      emptyState.style.display = 'block';
-    } else {
-      emptyState.style.display = 'none';
-      customContainer.innerHTML = '';
+      // Combine rules (session rules first/precedent)
+      rules = [...sessionRules, ...localRules];
+      activeProfileId = localResult.activeProfileId || 'system';
+
+      // Update UI Selection for Built-in Modes
+      updateSelectionInDOM(activeProfileId);
+
+      // Render Custom Profiles
+      const customProfileIds = Object.keys(profiles);
       
-      customProfileIds.forEach(id => {
-        const prof = profiles[id];
-        if (!prof) return;
-
-        const item = document.createElement('div');
-        item.className = `profile-item ${id === activeProfileId ? 'active' : ''}`;
-        item.setAttribute('data-id', id);
+      if (customProfileIds.length === 0) {
+        emptyState.style.display = 'block';
+      } else {
+        emptyState.style.display = 'none';
+        customContainer.innerHTML = '';
         
-        item.innerHTML = `
-          <div class="profile-bullet custom"></div>
-          <div class="profile-info">
-            <div class="profile-name">${escapeHTML(prof.name)}</div>
-            <div class="profile-meta">${prof.scheme.toUpperCase()} Proxy • ${escapeHTML(prof.host)}:${prof.port}</div>
-          </div>
-        `;
+        customProfileIds.forEach(id => {
+          const prof = profiles[id];
+          if (!prof) return;
 
-        item.addEventListener('click', () => {
-          setActiveProfile(id);
+          const item = document.createElement('div');
+          item.className = `profile-item ${id === activeProfileId ? 'active' : ''}`;
+          item.setAttribute('data-id', id);
+          
+          item.innerHTML = `
+            <div class="profile-bullet custom"></div>
+            <div class="profile-info">
+              <div class="profile-name">${escapeHTML(prof.name)}</div>
+              <div class="profile-meta">${prof.scheme.toUpperCase()} Proxy • ${escapeHTML(prof.host)}:${prof.port}</div>
+            </div>
+          `;
+
+          item.addEventListener('click', () => {
+            setActiveProfile(id);
+          });
+
+          customContainer.appendChild(item);
         });
+      }
 
-        customContainer.appendChild(item);
-      });
-    }
-
-    // Initialize Active Tab Quick Routing and Failed Resources
-    initActiveTabRoutingAndErrors();
+      // Initialize Active Tab Quick Routing, Cookies, and Trackers
+      initActiveTabRoutingAndErrors();
+    });
   });
 
   // Open Options dashboard
@@ -85,6 +110,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   failedBtn.addEventListener('click', () => {
     const isVisible = failedDrawer.style.display === 'block';
     failedDrawer.style.display = isVisible ? 'none' : 'block';
+  });
+
+  // Toggle Privacy Audit Drawer
+  privacyBtn.addEventListener('click', () => {
+    const isVisible = privacyDrawer.style.display === 'flex';
+    privacyDrawer.style.display = isVisible ? 'none' : 'flex';
   });
 
   // Helper: Update Active profile in storage and close popup
@@ -130,7 +161,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     statusLight.className = `status-light ${statusClass}`;
   }
 
-  // Active Tab Routing & Failed Resources Checker
+  // Active Tab Routing, Cookies & Failed Resources
   function initActiveTabRoutingAndErrors() {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs || tabs.length === 0) return;
@@ -179,11 +210,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Add / Update quick rule on button click
         addQuickRuleBtn.addEventListener('click', () => {
           const selectedProfileId = quickSelect.value;
-          addOrUpdateRule(rulePattern, selectedProfileId);
+          const sessionOnly = quickSessionCheckbox.checked;
+          addOrUpdateRule(rulePattern, selectedProfileId, true, sessionOnly);
         });
 
-        // Query background service-worker for failed resources
-        fetchFailedResources(currentTabId);
+        // Audit local cookies set by the active website
+        chrome.cookies.getAll({ domain: cleanDomain }, (cookies) => {
+          const count = cookies ? cookies.length : 0;
+          cookiesCountLabel.textContent = `${count} cookies`;
+        });
+
+        // Query background service-worker for failed resources and third-party trackers
+        fetchFailedResourcesAndTrackers(currentTabId);
 
       } catch (e) {
         console.error('Error initializing active tab quick routing:', e);
@@ -191,59 +229,102 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Fetch failed resources from background worker
-  function fetchFailedResources(tabId) {
+  // Fetch failed resources and third-party trackers
+  function fetchFailedResourcesAndTrackers(tabId) {
     chrome.runtime.sendMessage({ action: 'getFailedResources', tabId: tabId }, (response) => {
-      if (response && response.failedResources && response.failedResources.length > 0) {
-        const count = response.failedResources.length;
-        document.getElementById('failed-resources-count').textContent = `${count} failed resources`;
-        failedBtn.style.display = 'flex';
+      if (response) {
+        // 1. Render Failed Resources List
+        const failedRes = response.failedResources || [];
+        if (failedRes.length > 0) {
+          document.getElementById('failed-resources-count').textContent = `${failedRes.length} failed resources`;
+          failedBtn.style.display = 'flex';
 
-        failedList.innerHTML = '';
-        response.failedResources.forEach(failedDomain => {
-          const cleanFailedDomain = failedDomain.startsWith('www.') ? failedDomain.substring(4) : failedDomain;
-          const failedPattern = `*${cleanFailedDomain}`;
+          failedList.innerHTML = '';
+          failedRes.forEach(failedDomain => {
+            const cleanFailedDomain = failedDomain.startsWith('www.') ? failedDomain.substring(4) : failedDomain;
+            const failedPattern = `*${cleanFailedDomain}`;
 
-          // Find current rule mapping for this failed domain if exists
-          let currentProfileId = 'direct';
-          const matchedRule = rules.find(r => r.pattern === failedPattern || r.pattern === failedDomain);
-          if (matchedRule) {
-            currentProfileId = matchedRule.profileId;
-          }
+            let currentProfileId = 'direct';
+            const matchedRule = rules.find(r => r.pattern === failedPattern || r.pattern === failedDomain);
+            if (matchedRule) {
+              currentProfileId = matchedRule.profileId;
+            }
 
-          // Build select options
-          let optionsHtml = '<option value="direct">DIRECT</option>';
-          Object.keys(profiles).forEach(id => {
-            optionsHtml += `<option value="${id}" ${currentProfileId === id ? 'selected' : ''}>${escapeHTML(profiles[id].name)}</option>`;
+            let optionsHtml = '<option value="direct">DIRECT</option>';
+            Object.keys(profiles).forEach(id => {
+              optionsHtml += `<option value="${id}" ${currentProfileId === id ? 'selected' : ''}>${escapeHTML(profiles[id].name)}</option>`;
+            });
+
+            const row = document.createElement('div');
+            row.className = 'failed-domain-row';
+            row.innerHTML = `
+              <span class="failed-domain-name" title="${escapeHTML(failedDomain)}">${escapeHTML(failedDomain)}</span>
+              <select class="failed-domain-select" data-pattern="${failedPattern}">
+                ${optionsHtml}
+              </select>
+            `;
+
+            row.querySelector('.failed-domain-select').addEventListener('change', (e) => {
+              addOrUpdateRule(failedPattern, e.target.value, false, false);
+            });
+
+            failedList.appendChild(row);
           });
+        } else {
+          failedBtn.style.display = 'none';
+          failedDrawer.style.display = 'none';
+        }
 
-          const row = document.createElement('div');
-          row.className = 'failed-domain-row';
-          row.innerHTML = `
-            <span class="failed-domain-name" title="${escapeHTML(failedDomain)}">${escapeHTML(failedDomain)}</span>
-            <select class="failed-domain-select" data-pattern="${failedPattern}">
-              ${optionsHtml}
-            </select>
-          `;
+        // 2. Render Third-party Tracker Domains
+        const trackers = response.trackers || [];
+        trackersCountLabel.textContent = `${trackers.length} domains`;
 
-          // Bind change handler
-          row.querySelector('.failed-domain-select').addEventListener('change', (e) => {
-            const selectedProfileId = e.target.value;
-            addOrUpdateRule(failedPattern, selectedProfileId, false);
+        if (trackers.length > 0) {
+          trackersContainer.style.display = 'block';
+          trackersList.innerHTML = '';
+
+          trackers.forEach(trackerDomain => {
+            const cleanTrackerDomain = trackerDomain.startsWith('www.') ? trackerDomain.substring(4) : trackerDomain;
+            const trackerPattern = `*${cleanTrackerDomain}`;
+
+            let currentProfileId = 'direct';
+            const matchedRule = rules.find(r => r.pattern === trackerPattern || r.pattern === trackerDomain);
+            if (matchedRule) {
+              currentProfileId = matchedRule.profileId;
+            }
+
+            let optionsHtml = '<option value="direct">DIRECT</option>';
+            Object.keys(profiles).forEach(id => {
+              optionsHtml += `<option value="${id}" ${currentProfileId === id ? 'selected' : ''}>${escapeHTML(profiles[id].name)}</option>`;
+            });
+
+            const row = document.createElement('div');
+            row.className = 'tracker-row';
+            row.innerHTML = `
+              <span class="tracker-name" title="${escapeHTML(trackerDomain)}">${escapeHTML(trackerDomain)}</span>
+              <select class="tracker-action-select" data-pattern="${trackerPattern}">
+                ${optionsHtml}
+              </select>
+            `;
+
+            row.querySelector('.tracker-action-select').addEventListener('change', (e) => {
+              addOrUpdateRule(trackerPattern, e.target.value, false, false);
+            });
+
+            trackersList.appendChild(row);
           });
-
-          failedList.appendChild(row);
-        });
-      } else {
-        failedBtn.style.display = 'none';
-        failedDrawer.style.display = 'none';
+        } else {
+          trackersContainer.style.display = 'none';
+        }
       }
     });
   }
 
-  // Add or Update Auto Switch Rules
-  function addOrUpdateRule(pattern, profileId, closeOnSave = true) {
-    chrome.storage.local.get(['rules'], (result) => {
+  // Add or Update Switch Rules (Permanent or Session-only)
+  function addOrUpdateRule(pattern, profileId, closeOnSave = true, sessionOnly = false) {
+    const storageArea = sessionOnly ? chrome.storage.session : chrome.storage.local;
+
+    storageArea.get(['rules'], (result) => {
       let currentRules = result.rules || [];
       const index = currentRules.findIndex(r => r.pattern === pattern);
 
@@ -258,18 +339,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
       }
 
-      chrome.storage.local.set({ rules: currentRules }, () => {
-        // Automatically switch active profile to auto-switch so the newly added rule takes effect immediately!
+      storageArea.set({ rules: currentRules }, () => {
+        // Automatically switch active profile to auto-switch
         chrome.storage.local.set({ activeProfileId: 'auto-switch' }, () => {
           updateSelectionInDOM('auto-switch');
           
           if (closeOnSave) {
-            // Success animation or close
             setTimeout(() => {
               window.close();
             }, 150);
           } else {
-            // Update rules in local memory and refresh failed list without closing
+            // Update rules in local memory
             rules = currentRules;
           }
         });
@@ -277,7 +357,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Helper: Escape HTML strings to prevent XSS injection
+  // Theme Controller
+  function initThemeUI() {
+    if (!themeToggleBtn) return;
+
+    chrome.storage.local.get(['theme'], (result) => {
+      const theme = result.theme || 'dark';
+      setPopupTheme(theme);
+    });
+
+    themeToggleBtn.addEventListener('click', () => {
+      chrome.storage.local.get(['theme'], (result) => {
+        const currentTheme = result.theme || 'dark';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        setPopupTheme(newTheme);
+        chrome.storage.local.set({ theme: newTheme });
+      });
+    });
+  }
+
+  function setPopupTheme(theme) {
+    if (theme === 'light') {
+      document.body.classList.add('light-theme');
+      themeToggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon-dark"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>`;
+    } else {
+      document.body.classList.remove('light-theme');
+      themeToggleBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="theme-icon-light"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
+    }
+  }
+
+  // Helper: Escape HTML strings
   function escapeHTML(str) {
     if (!str) return '';
     return str

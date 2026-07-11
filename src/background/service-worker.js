@@ -5,15 +5,21 @@ let activeRules = [];
 let activeProfileId = 'system';
 let defaultProfileId = 'direct';
 
-// Helper: Load settings from storage
+// Helper: Load settings from local storage and session storage
 async function loadSettings() {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['profiles', 'rules', 'activeProfileId', 'defaultProfileId'], (result) => {
-      activeProfiles = result.profiles || {};
-      activeRules = result.rules || [];
-      activeProfileId = result.activeProfileId || 'system';
-      defaultProfileId = result.defaultProfileId || 'direct';
-      resolve();
+    chrome.storage.local.get(['profiles', 'rules', 'activeProfileId', 'defaultProfileId'], (localResult) => {
+      activeProfiles = localResult.profiles || {};
+      activeProfileId = localResult.activeProfileId || 'system';
+      defaultProfileId = localResult.defaultProfileId || 'direct';
+
+      // Read session storage for temporary rules
+      chrome.storage.session.get(['rules'], (sessionResult) => {
+        const sessionRules = sessionResult.rules || [];
+        // Combine session rules and local rules (session rules take precedence)
+        activeRules = [...sessionRules, ...(localResult.rules || [])];
+        resolve();
+      });
     });
   });
 }
@@ -53,14 +59,12 @@ function compilePacScript() {
     }
 
     if (rule.patternType === 'wildcard') {
-      // shExpMatch expects wildcard patterns like *.google.com or google.com
       script += `
       if (shExpMatch(host, '${rule.pattern}')) {
         return '${targetProxy}';
       }
       `;
     } else if (rule.patternType === 'regexp') {
-      // Regex match in PAC
       script += `
       if (/${rule.pattern}/i.test(url)) {
         return '${targetProxy}';
@@ -102,7 +106,6 @@ async function applyProxySettings() {
   } else if (activeProfileId === 'direct') {
     config = { mode: 'direct' };
   } else if (activeProfileId === 'auto-switch') {
-    // Compile rules into a PAC Script
     const pacScript = compilePacScript();
     config = {
       mode: 'pac_script',
@@ -111,7 +114,6 @@ async function applyProxySettings() {
       }
     };
   } else {
-    // Single fixed server proxy profile
     const profile = activeProfiles[activeProfileId];
     if (!profile) {
       console.warn(`Profile ID "${activeProfileId}" not found, falling back to system default.`);
@@ -132,7 +134,6 @@ async function applyProxySettings() {
     }
   }
 
-  // Set the proxy configuration
   chrome.proxy.settings.set({ value: config, scope: 'regular' }, () => {
     if (chrome.runtime.lastError) {
       console.error('Error applying proxy settings:', chrome.runtime.lastError.message);
@@ -146,30 +147,40 @@ async function applyProxySettings() {
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('AetherProxy installed.');
   
-  // Set default settings if not exists
-  chrome.storage.local.get(['activeProfileId', 'profiles'], (result) => {
+  chrome.storage.local.get(['activeProfileId'], (result) => {
     if (!result.activeProfileId) {
       chrome.storage.local.set({
         activeProfileId: 'system',
         defaultProfileId: 'direct',
         profiles: {},
-        rules: []
+        rules: [],
+        healthCheckEnabled: false,
+        healthCheckInterval: 60000,
+        fallbackProfileId: 'direct'
       }, () => {
         applyProxySettings();
+        startHealthCheck();
       });
     } else {
       applyProxySettings();
+      startHealthCheck();
     }
   });
 });
 
 chrome.runtime.onStartup.addListener(() => {
   applyProxySettings();
+  startHealthCheck();
 });
 
 // Watch for settings changes and hot-swap proxy config immediately
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local') {
+    applyProxySettings();
+    if (changes.healthCheckEnabled || changes.healthCheckInterval || changes.activeProfileId) {
+      startHealthCheck();
+    }
+  } else if (area === 'session') {
     applyProxySettings();
   }
 });
@@ -184,7 +195,6 @@ chrome.webRequest.onAuthRequired.addListener(
 
     console.log(`Proxy auth requested by ${details.challenger.host}:${details.challenger.port}`);
 
-    // Loop through profiles to find a match
     for (const profId in activeProfiles) {
       const prof = activeProfiles[profId];
       if (
@@ -212,20 +222,28 @@ chrome.webRequest.onAuthRequired.addListener(
 );
 
 // ----------------------------------------------------
-// FAILED RESOURCES TRACKER & BADGE SYSTEM
+// FAILED RESOURCES & THIRD-PARTY TRACKER AUDITING
 // ----------------------------------------------------
 const failedResourcesByTab = {};
+const trackersByTab = {};
+
+// Helper: Extract root domain name (e.g. mail.google.com -> google.com)
+function getRootDomain(hostname) {
+  if (!hostname) return '';
+  const parts = hostname.split('.');
+  if (parts.length <= 2) return hostname;
+  const lastTwo = parts.slice(-2).join('.');
+  if (['co.uk', 'com.cn', 'net.cn', 'org.cn', 'gov.cn', 'co.jp', 'com.br'].includes(lastTwo)) {
+    return parts.slice(-3).join('.');
+  }
+  return parts.slice(-2).join('.');
+}
 
 // Capture network load errors
 chrome.webRequest.onErrorOccurred.addListener(
   (details) => {
-    // Only track requests associated with active browser tabs
     if (details.tabId < 0) return;
-
-    // Filter out user-aborted requests (like user canceling page load or manual fetch aborts)
     if (details.error === 'net::ERR_ABORTED') return;
-
-    // Ignore extension internal requests
     if (details.url.startsWith('chrome-extension://')) return;
 
     try {
@@ -236,10 +254,9 @@ chrome.webRequest.onErrorOccurred.addListener(
         failedResourcesByTab[details.tabId] = new Set();
       }
 
-      // Record the unique failed domain
       failedResourcesByTab[details.tabId].add(host);
 
-      // Update extension badge text (amber warning count)
+      // Update badge text and color (amber warning count)
       const count = failedResourcesByTab[details.tabId].size;
       chrome.action.setBadgeText({ text: String(count), tabId: details.tabId });
       chrome.action.setBadgeBackgroundColor({ color: '#f59e0b', tabId: details.tabId });
@@ -250,23 +267,134 @@ chrome.webRequest.onErrorOccurred.addListener(
   { urls: ['<all_urls>'] }
 );
 
-// Reset error tracker when a tab navigates to a new site
+// Audit outgoing requests for third-party trackers
+chrome.webRequest.onBeforeRequest.addListener(
+  (details) => {
+    if (details.tabId < 0) return;
+    if (details.url.startsWith('chrome-extension://')) return;
+    if (!details.initiator) return;
+
+    try {
+      const initiatorUrl = new URL(details.initiator);
+      const requestUrl = new URL(details.url);
+
+      const initiatorRoot = getRootDomain(initiatorUrl.hostname);
+      const requestRoot = getRootDomain(requestUrl.hostname);
+
+      if (initiatorRoot && requestRoot && initiatorRoot !== requestRoot) {
+        if (!trackersByTab[details.tabId]) {
+          trackersByTab[details.tabId] = new Set();
+        }
+        trackersByTab[details.tabId].add(requestUrl.hostname);
+      }
+    } catch (e) {
+      // Fail silently
+    }
+  },
+  { urls: ['<all_urls>'] }
+);
+
+// Reset error/tracker cache when a tab navigates to a new site
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId === 0) { // Only reset on main page loads
     delete failedResourcesByTab[details.tabId];
+    delete trackersByTab[details.tabId];
     chrome.action.setBadgeText({ text: '', tabId: details.tabId });
   }
 });
 
-// Clean up tracker cache when a tab is closed
+// Clean up tracker caches when a tab is closed
 chrome.tabs.onRemoved.addListener((tabId) => {
   delete failedResourcesByTab[tabId];
+  delete trackersByTab[tabId];
 });
 
 // Listen for queries from popup.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'getFailedResources') {
-    const list = failedResourcesByTab[message.tabId] ? Array.from(failedResourcesByTab[message.tabId]) : [];
-    sendResponse({ failedResources: list });
+    const failedList = failedResourcesByTab[message.tabId] ? Array.from(failedResourcesByTab[message.tabId]) : [];
+    const trackerList = trackersByTab[message.tabId] ? Array.from(trackersByTab[message.tabId]) : [];
+    sendResponse({ 
+      failedResources: failedList,
+      trackers: trackerList
+    });
   }
 });
+
+// ----------------------------------------------------
+// ACTIVE PROXY HEALTH MONITOR & FAILOVER
+// ----------------------------------------------------
+let healthIntervalId = null;
+let failedChecksCount = 0;
+
+function startHealthCheck() {
+  if (healthIntervalId) {
+    clearInterval(healthIntervalId);
+    healthIntervalId = null;
+  }
+
+  chrome.storage.local.get(['healthCheckEnabled', 'healthCheckInterval'], (res) => {
+    const enabled = res.healthCheckEnabled || false;
+    const interval = res.healthCheckInterval || 60000;
+
+    if (enabled) {
+      healthIntervalId = setInterval(checkActiveProxyHealth, interval);
+    }
+  });
+}
+
+async function checkActiveProxyHealth() {
+  // Only monitor custom single proxy servers
+  if (activeProfileId === 'system' || activeProfileId === 'direct' || activeProfileId === 'auto-switch') {
+    failedChecksCount = 0;
+    return;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    const response = await fetch('https://clients3.google.com/generate_204', {
+      method: 'GET',
+      mode: 'no-cors',
+      cache: 'no-store',
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (response) {
+      failedChecksCount = 0;
+    } else {
+      throw new Error('No response body');
+    }
+  } catch (err) {
+    failedChecksCount++;
+    console.warn(`Health monitor failed (${failedChecksCount}/2) for active proxy:`, err);
+
+    if (failedChecksCount >= 2) {
+      failedChecksCount = 0;
+      triggerFailover();
+    }
+  }
+}
+
+function triggerFailover() {
+  chrome.storage.local.get(['fallbackProfileId', 'profiles'], (res) => {
+    const fallbackId = res.fallbackProfileId || 'direct';
+    const profiles = res.profiles || {};
+
+    const offlineName = profiles[activeProfileId] ? profiles[activeProfileId].name : 'Active Proxy';
+    const fallbackName = fallbackId === 'direct' ? 'DIRECT (No Proxy)' : (profiles[fallbackId] ? profiles[fallbackId].name : 'System');
+
+    chrome.storage.local.set({ activeProfileId: fallbackId }, () => {
+      // Trigger native notification
+      chrome.notifications.create('failover-alert', {
+        type: 'basic',
+        iconUrl: 'icon-128.png',
+        title: 'Proxy Offline - Failover Triggered',
+        message: `"${offlineName}" went offline. Traffic auto-routed through fallback: "${fallbackName}".`,
+        priority: 2
+      });
+    });
+  });
+}
