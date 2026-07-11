@@ -210,3 +210,63 @@ chrome.webRequest.onAuthRequired.addListener(
   { urls: ['<all_urls>'] },
   ['asyncBlocking']
 );
+
+// ----------------------------------------------------
+// FAILED RESOURCES TRACKER & BADGE SYSTEM
+// ----------------------------------------------------
+const failedResourcesByTab = {};
+
+// Capture network load errors
+chrome.webRequest.onErrorOccurred.addListener(
+  (details) => {
+    // Only track requests associated with active browser tabs
+    if (details.tabId < 0) return;
+
+    // Filter out user-aborted requests (like user canceling page load or manual fetch aborts)
+    if (details.error === 'net::ERR_ABORTED') return;
+
+    // Ignore extension internal requests
+    if (details.url.startsWith('chrome-extension://')) return;
+
+    try {
+      const url = new URL(details.url);
+      const host = url.hostname;
+
+      if (!failedResourcesByTab[details.tabId]) {
+        failedResourcesByTab[details.tabId] = new Set();
+      }
+
+      // Record the unique failed domain
+      failedResourcesByTab[details.tabId].add(host);
+
+      // Update extension badge text (amber warning count)
+      const count = failedResourcesByTab[details.tabId].size;
+      chrome.action.setBadgeText({ text: String(count), tabId: details.tabId });
+      chrome.action.setBadgeBackgroundColor({ color: '#f59e0b', tabId: details.tabId });
+    } catch (e) {
+      console.error('Error tracking failed resource:', e);
+    }
+  },
+  { urls: ['<all_urls>'] }
+);
+
+// Reset error tracker when a tab navigates to a new site
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+  if (details.frameId === 0) { // Only reset on main page loads
+    delete failedResourcesByTab[details.tabId];
+    chrome.action.setBadgeText({ text: '', tabId: details.tabId });
+  }
+});
+
+// Clean up tracker cache when a tab is closed
+chrome.tabs.onRemoved.addListener((tabId) => {
+  delete failedResourcesByTab[tabId];
+});
+
+// Listen for queries from popup.js
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'getFailedResources') {
+    const list = failedResourcesByTab[message.tabId] ? Array.from(failedResourcesByTab[message.tabId]) : [];
+    sendResponse({ failedResources: list });
+  }
+});
