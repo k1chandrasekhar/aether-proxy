@@ -309,10 +309,13 @@ chrome.webRequest.onErrorOccurred.addListener(
 
       failedResourcesByTab[details.tabId].add(host);
 
-      // Update badge text and color (amber warning count)
+      // Update badge text and color (amber warning count) — guard against closed tabs
       const count = failedResourcesByTab[details.tabId].size;
-      chrome.action.setBadgeText({ text: String(count), tabId: details.tabId });
-      chrome.action.setBadgeBackgroundColor({ color: '#f59e0b', tabId: details.tabId });
+      chrome.tabs.get(details.tabId, (tab) => {
+        if (chrome.runtime.lastError || !tab) return; // Tab was already closed
+        chrome.action.setBadgeText({ text: String(count), tabId: details.tabId });
+        chrome.action.setBadgeBackgroundColor({ color: '#f59e0b', tabId: details.tabId });
+      });
     } catch (e) {
       console.error('Error tracking failed resource:', e);
     }
@@ -352,7 +355,11 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId === 0) { // Only reset on main page loads
     delete failedResourcesByTab[details.tabId];
     delete trackersByTab[details.tabId];
-    chrome.action.setBadgeText({ text: '', tabId: details.tabId });
+    // Guard against stale tab IDs during rapid navigation or tab close
+    chrome.tabs.get(details.tabId, (tab) => {
+      if (chrome.runtime.lastError || !tab) return;
+      chrome.action.setBadgeText({ text: '', tabId: details.tabId });
+    });
   }
 });
 
