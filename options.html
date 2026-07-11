@@ -362,36 +362,62 @@
           <h2 class="section-title">Routing Simulator & Rule Debugger</h2>
         </div>
 
-        <div class="glass-panel" style="padding: 24px;">
-          <p class="card-desc" style="margin-bottom: 20px;">Test and trace exactly how AetherProxy handles routing for any URL. Enter a URL below to run a step-by-step routing simulation based on your configured profiles and wildcard rules.</p>
-          
-          <div class="form-group" style="display: flex; gap: 10px; align-items: flex-end; max-width: 600px;">
-            <div style="flex: 1;">
-              <label class="form-label" for="simulator-url-input">Test URL</label>
-              <input type="text" id="simulator-url-input" class="form-input" placeholder="e.g. https://www.google.com/search?q=aether">
-            </div>
-            <button id="run-simulation-btn" class="btn btn-primary" style="height: 38px;">Run Simulation</button>
-          </div>
-
-          <div id="simulator-results" style="display: none; margin-top: 30px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-              <h3 class="card-title" style="margin: 0;">Simulation Trace Results</h3>
-              <div id="simulator-dns-badge" class="geoip-badge" style="display: none; padding: 4px 8px; font-size: 10px;">Resolving Server IP...</div>
-            </div>
+        <div class="simulator-layout" style="display: flex; gap: 24px; align-items: flex-start;">
+          <!-- Left Panel: Input forms -->
+          <div class="glass-panel" style="flex: 1; max-width: 400px; padding: 24px; display: flex; flex-direction: column; height: fit-content;">
+            <h3 class="card-title" style="margin-bottom: 8px;">Run Route Test</h3>
+            <p class="card-desc" style="margin-bottom: 20px; font-size: 11.5px; line-height: 1.5;">Type in any web address (URL) to trace exactly how the proxy routing engine determines the outgoing connection channel.</p>
             
-            <div class="simulator-trace-tree" id="simulator-trace-tree">
-              <!-- Rendered via JS -->
-            </div>
-
-            <!-- Quick Add Rule Form -->
-            <div id="quick-add-rule-area" style="margin-top: 24px; padding: 16px; background: rgba(99, 102, 241, 0.04); border: 1px dashed rgba(99, 102, 241, 0.2); border-radius: 8px; display: none; animation: traceFadeIn 0.3s ease-out;">
-              <h4 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 600; color: var(--text-primary);">Quick-Add Switch Rule</h4>
-              <p style="margin: 0 0 12px 0; font-size: 10.5px; color: var(--text-secondary);">Create a switch rule to automatically route this domain through a proxy of your choice.</p>
-              <div style="display: flex; gap: 10px; align-items: center;">
-                <select id="quick-add-profile-select" class="form-select" style="width: 180px; height: 32px; padding: 4px 10px; font-size: 11.5px;"></select>
-                <button id="quick-add-save-btn" class="btn btn-primary" style="height: 32px; padding: 0 16px; font-size: 11px;">Create Rule</button>
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label class="form-label" for="simulator-url-input">Test URL</label>
+              <div style="position: relative;">
+                <input type="text" id="simulator-url-input" class="form-input" placeholder="e.g. https://www.google.com" style="padding-left: 36px; height: 38px;">
+                <div style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); display: flex; align-items: center;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                </div>
               </div>
             </div>
+            
+            <button id="run-simulation-btn" class="btn btn-primary" style="width: 100%; height: 38px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Run Trace Simulation</span>
+            </button>
+          </div>
+
+          <!-- Right Panel: Trace Results or Empty State -->
+          <div id="simulator-results-panel" class="glass-panel" style="flex: 1.5; padding: 24px; min-height: 320px; display: flex; flex-direction: column;">
+            
+            <!-- Empty State -->
+            <div id="simulator-empty-state" style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin: auto; text-align: center; max-width: 320px; padding: 40px 0;">
+              <div style="width: 54px; height: 54px; border-radius: 50%; background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.15); display: flex; align-items: center; justify-content: center; color: #818cf8; margin-bottom: 16px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" x2="18" y1="12" y2="12"/><line x1="6" x2="2" y1="12" y2="12"/><line x1="12" x2="12" y1="6" y2="2"/><line x1="12" x2="12" y1="22" y2="18"/></svg>
+              </div>
+              <h3 style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 0 0 6px 0;">No Active Simulation</h3>
+              <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin: 0;">Type a website address on the left and run the tracer to inspect rules and connection paths.</p>
+            </div>
+
+            <!-- Active Trace Results (shown on run) -->
+            <div id="simulator-results" style="display: none; height: 100%;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                <h3 class="card-title" style="margin: 0;">Trace Execution Pipeline</h3>
+                <div id="simulator-dns-badge" class="geoip-badge" style="display: none; padding: 4px 10px; font-size: 10px; font-weight: 500;">Resolving...</div>
+              </div>
+              
+              <div class="simulator-trace-tree" id="simulator-trace-tree">
+                <!-- Trace steps dynamically inserted -->
+              </div>
+
+              <!-- Quick Add Rule Form -->
+              <div id="quick-add-rule-area" style="margin-top: 24px; padding: 16px; background: rgba(99, 102, 241, 0.03); border: 1px dashed rgba(99, 102, 241, 0.2); border-radius: 8px; display: none; animation: traceFadeIn 0.3s ease-out;">
+                <h4 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 600; color: var(--text-primary);">Quick-Add Switch Rule</h4>
+                <p style="margin: 0 0 12px 0; font-size: 10.5px; color: var(--text-secondary);">Direct matches for this domain to a proxy profile to bypass the default fallback.</p>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  <select id="quick-add-profile-select" class="form-select" style="width: 180px; height: 32px; padding: 4px 10px; font-size: 11.5px;"></select>
+                  <button id="quick-add-save-btn" class="btn btn-primary" style="height: 32px; padding: 0 16px; font-size: 11px;">Create Rule</button>
+                </div>
+              </div>
+            </div>
+            
           </div>
         </div>
       </section>

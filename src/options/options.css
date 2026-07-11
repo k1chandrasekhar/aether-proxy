@@ -917,18 +917,18 @@ body.light-theme [data-tooltip]::after {
 .simulator-trace-tree {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   position: relative;
-  padding-left: 20px;
+  padding-left: 24px;
   margin-top: 15px;
 }
 
 .simulator-trace-tree::before {
   content: '';
   position: absolute;
-  left: 5px;
-  top: 10px;
-  bottom: 10px;
+  left: 9px;
+  top: 16px;
+  bottom: 16px;
   width: 2px;
   background: rgba(255, 255, 255, 0.05);
 }
@@ -941,8 +941,11 @@ body.light-theme .simulator-trace-tree::before {
   display: flex;
   align-items: flex-start;
   position: relative;
-  gap: 12px;
-  animation: traceFadeIn 0.3s ease-out;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
 }
 
 @keyframes traceFadeIn {
@@ -952,15 +955,16 @@ body.light-theme .simulator-trace-tree::before {
 
 .trace-step-bullet {
   position: absolute;
-  left: -20px;
-  top: 4px;
+  left: -21px;
+  top: 12px;
   width: 12px;
   height: 12px;
   border-radius: 50%;
   background: var(--text-muted);
   border: 2px solid var(--bg-secondary);
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.03);
   z-index: 2;
+  transition: all 0.2s ease;
 }
 
 body.light-theme .trace-step-bullet {
@@ -968,9 +972,23 @@ body.light-theme .trace-step-bullet {
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.03);
 }
 
+.trace-step.matched {
+  background: rgba(16, 185, 129, 0.03);
+  border-color: rgba(16, 185, 129, 0.15);
+}
+
+body.light-theme .trace-step.matched {
+  background: rgba(16, 185, 129, 0.02);
+  border-color: rgba(16, 185, 129, 0.1);
+}
+
 .trace-step.matched .trace-step-bullet {
-  background: var(--accent);
-  box-shadow: 0 0 8px var(--accent);
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+.trace-step.skipped {
+  opacity: 0.45;
 }
 
 .trace-step.skipped .trace-step-bullet {
@@ -981,9 +999,19 @@ body.light-theme .trace-step.skipped .trace-step-bullet {
   background: rgba(0, 0, 0, 0.1);
 }
 
+.trace-step.final {
+  background: rgba(99, 102, 241, 0.05);
+  border-color: rgba(99, 102, 241, 0.18);
+}
+
+body.light-theme .trace-step.final {
+  background: rgba(99, 102, 241, 0.03);
+  border-color: rgba(99, 102, 241, 0.12);
+}
+
 .trace-step.final .trace-step-bullet {
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  background: #6366f1;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
 }
 
 .trace-step-content {
@@ -1001,6 +1029,7 @@ body.light-theme .trace-step.skipped .trace-step-bullet {
 .trace-step-desc {
   font-size: 11px;
   color: var(--text-secondary);
+  line-height: 1.4;
 }
 
 /* ----------------------------------------------------

@@ -897,6 +897,8 @@ function initSimulator() {
     const host = parsedUrl.hostname;
     const url = parsedUrl.href;
 
+    const emptyState = document.getElementById('simulator-empty-state');
+    if (emptyState) emptyState.style.display = 'none';
     resultsDiv.style.display = 'block';
     traceTree.innerHTML = '';
     dnsBadge.style.display = 'block';
