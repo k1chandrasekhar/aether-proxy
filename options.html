@@ -370,9 +370,23 @@
           </div>
 
           <div id="simulator-results" style="display: none; margin-top: 30px;">
-            <h3 class="card-title" style="margin-bottom: 16px;">Simulation Trace Results</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+              <h3 class="card-title" style="margin: 0;">Simulation Trace Results</h3>
+              <div id="simulator-dns-badge" class="geoip-badge" style="display: none; padding: 4px 8px; font-size: 10px;">Resolving Server IP...</div>
+            </div>
+            
             <div class="simulator-trace-tree" id="simulator-trace-tree">
               <!-- Rendered via JS -->
+            </div>
+
+            <!-- Quick Add Rule Form -->
+            <div id="quick-add-rule-area" style="margin-top: 24px; padding: 16px; background: rgba(99, 102, 241, 0.04); border: 1px dashed rgba(99, 102, 241, 0.2); border-radius: 8px; display: none; animation: traceFadeIn 0.3s ease-out;">
+              <h4 style="margin: 0 0 6px 0; font-size: 12px; font-weight: 600; color: var(--text-primary);">Quick-Add Switch Rule</h4>
+              <p style="margin: 0 0 12px 0; font-size: 10.5px; color: var(--text-secondary);">Create a switch rule to automatically route this domain through a proxy of your choice.</p>
+              <div style="display: flex; gap: 10px; align-items: center;">
+                <select id="quick-add-profile-select" class="form-select" style="width: 180px; height: 32px; padding: 4px 10px; font-size: 11.5px;"></select>
+                <button id="quick-add-save-btn" class="btn btn-primary" style="height: 32px; padding: 0 16px; font-size: 11px;">Create Rule</button>
+              </div>
             </div>
           </div>
         </div>

@@ -858,10 +858,14 @@ function initSimulator() {
   const urlInput = document.getElementById('simulator-url-input');
   const resultsDiv = document.getElementById('simulator-results');
   const traceTree = document.getElementById('simulator-trace-tree');
+  const dnsBadge = document.getElementById('simulator-dns-badge');
+  const quickAddArea = document.getElementById('quick-add-rule-area');
+  const quickAddSelect = document.getElementById('quick-add-profile-select');
+  const quickAddBtn = document.getElementById('quick-add-save-btn');
 
   if (!runBtn || !urlInput) return;
 
-  runBtn.addEventListener('click', () => {
+  runBtn.addEventListener('click', async () => {
     const urlStr = urlInput.value.trim();
     if (!urlStr) return;
 
@@ -878,6 +882,28 @@ function initSimulator() {
 
     resultsDiv.style.display = 'block';
     traceTree.innerHTML = '';
+    dnsBadge.style.display = 'block';
+    dnsBadge.textContent = 'Resolving host IP via DoH...';
+
+    // 1. Safe DNS Resolution via Cloudflare Secure DoH
+    resolveDNS(host).then(ip => {
+      if (ip) {
+        dnsBadge.textContent = `Server IP: ${ip} (Resolving Location...)`;
+        fetch(`https://freeipapi.com/api/json/${ip}`)
+          .then(res => res.json())
+          .then(data => {
+            const country = data.countryName || 'Unknown';
+            const flag = getFlagEmoji(data.countryCode);
+            const city = data.cityName || '';
+            dnsBadge.textContent = `Server IP: ${ip} • ${city ? city + ', ' : ''}${country} ${flag}`;
+          })
+          .catch(() => {
+            dnsBadge.textContent = `Server IP: ${ip}`;
+          });
+      } else {
+        dnsBadge.textContent = 'Bypassed / Could not resolve IP';
+      }
+    });
 
     const steps = [];
 
@@ -957,9 +983,18 @@ function initSimulator() {
 
     // Step 4: Final Output
     const finalProfileName = finalTarget === 'direct' ? 'DIRECT (No Proxy)' : (profiles[finalTarget] ? profiles[finalTarget].name : 'System/DIRECT');
+    const targetProfile = profiles[finalTarget];
+    let detailedDesc = '';
+    
+    if (targetProfile) {
+      detailedDesc = `URL will connect via proxy: "${targetProfile.name}" (${targetProfile.scheme.toUpperCase()} • ${targetProfile.host}:${targetProfile.port})`;
+    } else {
+      detailedDesc = `URL will connect via: "${finalProfileName}".`;
+    }
+
     steps.push({
       title: `Final Routing Connection`,
-      desc: `URL will connect via: "${finalProfileName}".`,
+      desc: detailedDesc,
       status: 'final'
     });
 
@@ -976,7 +1011,75 @@ function initSimulator() {
       `;
       traceTree.appendChild(row);
     });
+
+    // 2. Interactive Quick Add Rule Form triggers
+    if (!ruleMatched && !isBypass) {
+      quickAddArea.style.display = 'block';
+      quickAddSelect.innerHTML = '<option value="direct">DIRECT (No Proxy)</option>';
+      Object.keys(profiles).forEach(pId => {
+        const opt = document.createElement('option');
+        opt.value = pId;
+        opt.textContent = profiles[pId].name;
+        quickAddSelect.appendChild(opt);
+      });
+
+      // Clear old click listener by cloning
+      const newBtn = quickAddBtn.cloneNode(true);
+      quickAddBtn.parentNode.replaceChild(newBtn, quickAddBtn);
+
+      newBtn.addEventListener('click', () => {
+        const chosenProfileId = quickAddSelect.value;
+        const cleanHost = host.startsWith('www.') ? host.substring(4) : host;
+        const rulePattern = `*${cleanHost}`;
+
+        rules.push({
+          id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          patternType: 'wildcard',
+          pattern: rulePattern,
+          profileId: chosenProfileId
+        });
+
+        chrome.storage.local.set({ rules }, () => {
+          alert(`Routing rule created for "${rulePattern}" pointing to "${chosenProfileId === 'direct' ? 'DIRECT' : profiles[chosenProfileId].name}"`);
+          quickAddArea.style.display = 'none';
+          runBtn.click(); // Re-run simulation immediately to show the match
+          renderRulesTab(); // Sync options rules tab
+        });
+      });
+    } else {
+      quickAddArea.style.display = 'none';
+    }
   });
+}
+
+// Secure DNS over HTTPS Lookup using Cloudflare DNS
+async function resolveDNS(hostname) {
+  try {
+    const res = await fetch(`https://cloudflare-dns.com/dns-query?name=${hostname}&type=A`, {
+      headers: { 'accept': 'application/dns-json' }
+    });
+    const data = await res.json();
+    if (data.Answer && data.Answer.length > 0) {
+      return data.Answer[0].data; // Returns resolved IP address
+    }
+  } catch (e) {
+    console.error('DNS DoH failed:', e);
+  }
+  return null;
+}
+
+// Convert country code to emoji flag
+function getFlagEmoji(countryCode) {
+  if (!countryCode || countryCode === '-') return '🌐';
+  try {
+    const codePoints = countryCode
+      .toUpperCase()
+      .split('')
+      .map(char => 127397 + char.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
+  } catch (e) {
+    return '🌐';
+  }
 }
 
 // ----------------------------------------------------
