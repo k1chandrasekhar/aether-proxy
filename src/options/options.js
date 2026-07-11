@@ -80,6 +80,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 6. Bind Events for Privacy & Theme
   initPrivacyTab();
   initTheme();
+
+  // 7. Bind Events for Simulator, Share & Token Import
+  initSimulator();
+  initSharingAndImport();
+  checkQueryImport();
 });
 
 // Helper: Load all settings from Local Storage
@@ -123,32 +128,56 @@ function initTabs() {
 // TAB 1: PROXY PROFILES SECTION
 // ----------------------------------------------------
 function renderProfilesList() {
-  profilesListContainer.innerHTML = '';
-  const profileIds = Object.keys(profiles);
+  chrome.storage.local.get(['proxyLatencies'], (result) => {
+    const latencies = result.proxyLatencies || {};
+    profilesListContainer.innerHTML = '';
+    const profileIds = Object.keys(profiles);
 
-  profileIds.forEach(id => {
-    const prof = profiles[id];
-    if (!prof) return;
+    profileIds.forEach(id => {
+      const prof = profiles[id];
+      if (!prof) return;
 
-    const tab = document.createElement('button');
-    tab.className = 'profile-tab';
-    if (editProfileId.value === id) {
-      tab.classList.add('active');
-    }
+      const tab = document.createElement('button');
+      tab.className = 'profile-tab';
+      if (editProfileId.value === id) {
+        tab.classList.add('active');
+      }
 
-    tab.innerHTML = `
-      <div class="profile-tab-bullet"></div>
-      <div style="overflow: hidden; flex: 1;">
-        <div class="profile-tab-name">${escapeHTML(prof.name)}</div>
-        <div class="profile-tab-meta">${prof.scheme.toUpperCase()} • ${escapeHTML(prof.host)}:${prof.port}</div>
-      </div>
-    `;
+      let latencyHtml = '';
+      if (latencies[id] !== undefined) {
+        const ms = latencies[id];
+        if (ms >= 9999) {
+          latencyHtml = '<span class="latency-badge offline" style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); margin-left: 6px;">offline</span>';
+        } else {
+          let badgeColor = 'rgba(16, 185, 129, 0.1)';
+          let textColor = '#34d399';
+          let borderCol = 'rgba(16, 185, 129, 0.25)';
+          if (ms > 300) {
+            badgeColor = 'rgba(245, 158, 11, 0.1)';
+            textColor = '#fbbf24';
+            borderCol = 'rgba(245, 158, 11, 0.25)';
+          }
+          latencyHtml = `<span class="latency-badge" style="font-size: 9px; padding: 2px 4px; border-radius: 4px; background: ${badgeColor}; color: ${textColor}; border: 1px solid ${borderCol}; margin-left: 6px;">${ms}ms</span>`;
+        }
+      }
 
-    tab.addEventListener('click', () => {
-      loadProfileToEditor(id);
+      tab.innerHTML = `
+        <div class="profile-tab-bullet"></div>
+        <div style="overflow: hidden; flex: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="profile-tab-name">${escapeHTML(prof.name)}</div>
+            ${latencyHtml}
+          </div>
+          <div class="profile-tab-meta">${prof.scheme.toUpperCase()} • ${escapeHTML(prof.host)}:${prof.port}</div>
+        </div>
+      `;
+
+      tab.addEventListener('click', () => {
+        loadProfileToEditor(id);
+      });
+
+      profilesListContainer.appendChild(tab);
     });
-
-    profilesListContainer.appendChild(tab);
   });
 }
 
@@ -719,19 +748,26 @@ function initPrivacyTab() {
   const configArea = document.getElementById('health-check-config-area');
   const intervalSelect = document.getElementById('health-check-interval-select');
   const fallbackSelect = document.getElementById('health-fallback-select');
+  const rotationToggle = document.getElementById('rotation-toggle');
+  const rotationConfigArea = document.getElementById('rotation-config-area');
+  const rotationIntervalSelect = document.getElementById('rotation-interval-select');
   const saveBtn = document.getElementById('save-privacy-btn');
   const statusMsg = document.getElementById('privacy-status-msg');
 
-  if (!webrtcToggle || !healthToggle || !saveBtn) return;
+  if (!webrtcToggle || !healthToggle || !rotationToggle || !saveBtn) return;
 
   // Toggle config area visibility
   healthToggle.addEventListener('change', () => {
     configArea.style.display = healthToggle.checked ? 'flex' : 'none';
   });
 
+  rotationToggle.addEventListener('change', () => {
+    rotationConfigArea.style.display = rotationToggle.checked ? 'flex' : 'none';
+  });
+
   // Populate options and load initial values
   chrome.storage.local.get(
-    ['profiles', 'webrtcShieldEnabled', 'healthCheckEnabled', 'healthCheckInterval', 'fallbackProfileId'],
+    ['profiles', 'webrtcShieldEnabled', 'healthCheckEnabled', 'healthCheckInterval', 'fallbackProfileId', 'rotationEnabled', 'rotationInterval'],
     (result) => {
       const profilesData = result.profiles || {};
       
@@ -748,12 +784,18 @@ function initPrivacyTab() {
       webrtcToggle.checked = result.webrtcShieldEnabled || false;
       healthToggle.checked = result.healthCheckEnabled || false;
       configArea.style.display = healthToggle.checked ? 'flex' : 'none';
+
+      rotationToggle.checked = result.rotationEnabled || false;
+      rotationConfigArea.style.display = rotationToggle.checked ? 'flex' : 'none';
       
       if (result.healthCheckInterval) {
         intervalSelect.value = String(result.healthCheckInterval);
       }
       if (result.fallbackProfileId) {
         fallbackSelect.value = result.fallbackProfileId;
+      }
+      if (result.rotationInterval) {
+        rotationIntervalSelect.value = String(result.rotationInterval);
       }
     }
   );
@@ -764,12 +806,16 @@ function initPrivacyTab() {
     const healthEnabled = healthToggle.checked;
     const checkInterval = parseInt(intervalSelect.value);
     const fallbackId = fallbackSelect.value;
+    const rotationEnabled = rotationToggle.checked;
+    const rotationInterval = parseInt(rotationIntervalSelect.value);
 
     const privacySettings = {
       webrtcShieldEnabled: webrtcEnabled,
       healthCheckEnabled: healthEnabled,
       healthCheckInterval: checkInterval,
-      fallbackProfileId: fallbackId
+      fallbackProfileId: fallbackId,
+      rotationEnabled: rotationEnabled,
+      rotationInterval: rotationInterval
     };
 
     chrome.storage.local.set(privacySettings, () => {
@@ -802,4 +848,259 @@ function showStatusMessage(elem, msg, isErr) {
   setTimeout(() => {
     elem.style.display = 'none';
   }, 4000);
+}
+
+// ----------------------------------------------------
+// ROUTING SIMULATOR matched wildcard / regex tracer
+// ----------------------------------------------------
+function initSimulator() {
+  const runBtn = document.getElementById('run-simulation-btn');
+  const urlInput = document.getElementById('simulator-url-input');
+  const resultsDiv = document.getElementById('simulator-results');
+  const traceTree = document.getElementById('simulator-trace-tree');
+
+  if (!runBtn || !urlInput) return;
+
+  runBtn.addEventListener('click', () => {
+    const urlStr = urlInput.value.trim();
+    if (!urlStr) return;
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(urlStr.startsWith('http') ? urlStr : 'http://' + urlStr);
+    } catch (e) {
+      alert('Please enter a valid URL.');
+      return;
+    }
+
+    const host = parsedUrl.hostname;
+    const url = parsedUrl.href;
+
+    resultsDiv.style.display = 'block';
+    traceTree.innerHTML = '';
+
+    const steps = [];
+
+    // Step 1: Subnet bypass list check
+    let isBypass = false;
+    const bypassHosts = ['localhost', '127.0.0.1', '10.', '172.16.', '192.168.'];
+    const isPlain = !host.includes('.');
+    
+    let bypassMatch = null;
+    if (isPlain) {
+      isBypass = true;
+      bypassMatch = 'plain host (no dots)';
+    } else {
+      for (const b of bypassHosts) {
+        if (host.startsWith(b) || host.includes('.' + b) || (b.endsWith('.') && host.includes(b))) {
+          isBypass = true;
+          bypassMatch = b;
+          break;
+        }
+      }
+    }
+
+    steps.push({
+      title: 'Local Intranet Bypass Check',
+      desc: isBypass ? `Matched bypass criteria: ${bypassMatch}. Traffic routed directly.` : 'No private subnet match. Proceeding to rule matching...',
+      status: isBypass ? 'matched' : 'skipped'
+    });
+
+    let finalTarget = 'DIRECT';
+    let ruleMatched = false;
+
+    if (isBypass) {
+      finalTarget = 'DIRECT';
+    } else {
+      // Step 2: Auto Switch Rules
+      for (const rule of rules) {
+        let matched = false;
+        if (rule.patternType === 'wildcard') {
+          // Simulate shExpMatch
+          const regexPattern = '^' + rule.pattern.replace(/\./g, '\\.').replace(/\*/g, '.*').replace(/\?/g, '.') + '$';
+          const rx = new RegExp(regexPattern, 'i');
+          matched = rx.test(host);
+        } else if (rule.patternType === 'regexp') {
+          const rx = new RegExp(rule.pattern, 'i');
+          matched = rx.test(url);
+        }
+
+        if (matched && !ruleMatched) {
+          ruleMatched = true;
+          const profileName = rule.profileId === 'direct' ? 'DIRECT' : (profiles[rule.profileId] ? profiles[rule.profileId].name : 'DIRECT');
+          steps.push({
+            title: `Routing Rule: "${rule.pattern}" (${rule.patternType})`,
+            desc: `Matched! Routing traffic through profile "${profileName}".`,
+            status: 'matched'
+          });
+          finalTarget = rule.profileId;
+        } else {
+          steps.push({
+            title: `Routing Rule: "${rule.pattern}" (${rule.patternType})`,
+            desc: 'Did not match.',
+            status: 'skipped'
+          });
+        }
+      }
+
+      // Step 3: Default fallback profile check
+      if (!ruleMatched) {
+        const fallbackName = defaultProfileId === 'direct' ? 'DIRECT (No Proxy)' : (profiles[defaultProfileId] ? profiles[defaultProfileId].name : 'DIRECT');
+        steps.push({
+          title: 'Default Fallback Routing',
+          desc: `No routing rules matched. Routing traffic through default profile: "${fallbackName}".`,
+          status: 'matched'
+        });
+        finalTarget = defaultProfileId;
+      }
+    }
+
+    // Step 4: Final Output
+    const finalProfileName = finalTarget === 'direct' ? 'DIRECT (No Proxy)' : (profiles[finalTarget] ? profiles[finalTarget].name : 'System/DIRECT');
+    steps.push({
+      title: `Final Routing Connection`,
+      desc: `URL will connect via: "${finalProfileName}".`,
+      status: 'final'
+    });
+
+    // Render timeline steps
+    steps.forEach(step => {
+      const row = document.createElement('div');
+      row.className = `trace-step ${step.status}`;
+      row.innerHTML = `
+        <div class="trace-step-bullet"></div>
+        <div class="trace-step-content">
+          <div class="trace-step-title">${step.title}</div>
+          <div class="trace-step-desc">${step.desc}</div>
+        </div>
+      `;
+      traceTree.appendChild(row);
+    });
+  });
+}
+
+// ----------------------------------------------------
+// 100% LOCAL SHARING MODAL & TOKEN IMPORTER
+// ----------------------------------------------------
+function initSharingAndImport() {
+  const shareProfileBtn = document.getElementById('share-profile-btn');
+  const shareModal = document.getElementById('share-modal');
+  const closeShareModalBtn = document.getElementById('close-share-modal-btn');
+  const shareTokenInput = document.getElementById('share-token-input');
+  const copyShareTokenBtn = document.getElementById('copy-share-token-btn');
+  const qrCanvas = document.getElementById('share-qr-canvas');
+  const importTokenBtn = document.getElementById('import-token-btn');
+
+  if (shareProfileBtn && shareModal) {
+    shareProfileBtn.addEventListener('click', () => {
+      const id = editProfileId.value;
+      if (!id || !profiles[id]) return;
+
+      const prof = profiles[id];
+      const rawData = {
+        name: prof.name,
+        scheme: prof.scheme,
+        host: prof.host,
+        port: prof.port,
+        username: prof.username || '',
+        password: prof.password || '',
+        bypassList: prof.bypassList || ''
+      };
+
+      // Base64 encode details
+      const token = btoa(JSON.stringify(rawData));
+      shareTokenInput.value = token;
+
+      // Draw offline QR code on canvas using local script (zero network calls)
+      try {
+        const qr = qrcode(4, 'L');
+        qr.addData(token);
+        qr.make();
+        
+        const ctx = qrCanvas.getContext('2d');
+        ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+        
+        // Render modules
+        qr.renderTo2dContext(ctx, 4); // 4px cell size
+      } catch (err) {
+        console.error('Failed to generate offline QR code:', err);
+      }
+
+      shareModal.style.display = 'flex';
+    });
+
+    closeShareModalBtn.addEventListener('click', () => {
+      shareModal.style.display = 'none';
+    });
+
+    copyShareTokenBtn.addEventListener('click', () => {
+      shareTokenInput.select();
+      document.execCommand('copy');
+      copyShareTokenBtn.textContent = 'Copied!';
+      setTimeout(() => {
+        copyShareTokenBtn.textContent = 'Copy Token to Clipboard';
+      }, 2000);
+    });
+  }
+
+  // Import Token listener
+  if (importTokenBtn) {
+    importTokenBtn.addEventListener('click', () => {
+      const token = prompt('Paste your Base64 Share Token below to import a proxy profile:');
+      if (!token) return;
+      try {
+        const parsed = JSON.parse(atob(token.trim()));
+        if (parsed.name && parsed.scheme && parsed.host && parsed.port) {
+          const newId = `profile-${Date.now()}`;
+          profiles[newId] = {
+            id: newId,
+            name: parsed.name + ' (Imported)',
+            scheme: parsed.scheme,
+            host: parsed.host,
+            port: parsed.port,
+            username: parsed.username || '',
+            password: parsed.password || '',
+            bypassList: parsed.bypassList || ''
+          };
+          chrome.storage.local.set({ profiles }, () => {
+            alert(`Successfully imported proxy profile: "${profiles[newId].name}"`);
+            renderProfilesList();
+          });
+        } else {
+          throw new Error('Invalid token structure');
+        }
+      } catch (e) {
+        alert('Invalid Share Token. Please verify you copied the entire token.');
+      }
+    });
+  }
+}
+
+// Check if options tab loaded with a query import link (e.g. options.html?import=...)
+function checkQueryImport() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const importToken = urlParams.get('import');
+  if (importToken) {
+    try {
+      const parsed = JSON.parse(atob(importToken.trim()));
+      if (parsed.name && parsed.scheme && parsed.host && parsed.port) {
+        // Clear forms and open editor in "new profile" state populated
+        createNewProfile();
+        editProfileName.value = parsed.name + ' (Shared)';
+        editProfileScheme.value = parsed.scheme;
+        editProfileHost.value = parsed.host;
+        editProfilePort.value = parsed.port;
+        editProfileUsername.value = parsed.username || '';
+        editProfilePassword.value = parsed.password || '';
+        editProfileBypass.value = parsed.bypassList || '';
+        
+        editProfileName.focus();
+        
+        // Remove import parameter from URL so page reloads don't prompt
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (e) {
+      console.error('Failed to parse query import link:', e);
+    }
+  }
 }

@@ -113,6 +113,42 @@ async function applyProxySettings() {
         data: pacScript
       }
     };
+  } else if (activeProfileId === 'smart-auto-select') {
+    const fastestProfileId = (await getLocalStorage('fastestProfileId')) || 'direct';
+    const profile = activeProfiles[fastestProfileId];
+    if (!profile) {
+      config = { mode: 'direct' };
+    } else {
+      config = {
+        mode: 'fixed_servers',
+        rules: {
+          singleProxy: {
+            scheme: profile.scheme || 'http',
+            host: profile.host,
+            port: parseInt(profile.port)
+          },
+          bypassList: profile.bypassList ? profile.bypassList.split(',').map(s => s.trim()).filter(Boolean) : []
+        }
+      };
+    }
+  } else if (activeProfileId === 'rotation') {
+    const rotationActiveId = (await getLocalStorage('rotationActiveId')) || 'direct';
+    const profile = activeProfiles[rotationActiveId];
+    if (!profile) {
+      config = { mode: 'direct' };
+    } else {
+      config = {
+        mode: 'fixed_servers',
+        rules: {
+          singleProxy: {
+            scheme: profile.scheme || 'http',
+            host: profile.host,
+            port: parseInt(profile.port)
+          },
+          bypassList: profile.bypassList ? profile.bypassList.split(',').map(s => s.trim()).filter(Boolean) : []
+        }
+      };
+    }
   } else {
     const profile = activeProfiles[activeProfileId];
     if (!profile) {
@@ -156,14 +192,21 @@ chrome.runtime.onInstalled.addListener(async () => {
         rules: [],
         healthCheckEnabled: false,
         healthCheckInterval: 60000,
-        fallbackProfileId: 'direct'
+        fallbackProfileId: 'direct',
+        rotationEnabled: false,
+        rotationInterval: 300000,
+        rotationActiveId: 'direct'
       }, () => {
         applyProxySettings();
         startHealthCheck();
+        startSmartAutoSelectChecker();
+        startProxyRotation();
       });
     } else {
       applyProxySettings();
       startHealthCheck();
+      startSmartAutoSelectChecker();
+      startProxyRotation();
     }
   });
 });
@@ -171,19 +214,29 @@ chrome.runtime.onInstalled.addListener(async () => {
 chrome.runtime.onStartup.addListener(() => {
   applyProxySettings();
   startHealthCheck();
+  startSmartAutoSelectChecker();
+  startProxyRotation();
 });
 
-// Watch for settings changes and hot-swap proxy config immediately
-chrome.storage.onChanged.addListener((changes, area) => {
+function onStorageChange(changes, area) {
   if (area === 'local') {
     applyProxySettings();
     if (changes.healthCheckEnabled || changes.healthCheckInterval || changes.activeProfileId) {
       startHealthCheck();
     }
+    if (changes.activeProfileId) {
+      startSmartAutoSelectChecker();
+    }
+    if (changes.rotationEnabled || changes.rotationInterval || changes.activeProfileId) {
+      startProxyRotation();
+    }
   } else if (area === 'session') {
     applyProxySettings();
   }
-});
+}
+
+// Watch for settings changes and hot-swap proxy config immediately
+chrome.storage.onChanged.addListener(onStorageChange);
 
 // Proxy Credentials challenge interceptor (Async Auth for Manifest V3)
 chrome.webRequest.onAuthRequired.addListener(
@@ -395,6 +448,158 @@ function triggerFailover() {
         message: `"${offlineName}" went offline. Traffic auto-routed through fallback: "${fallbackName}".`,
         priority: 2
       });
+    });
+  });
+}
+
+// Helper: Get item from Local Storage asynchronously
+function getLocalStorage(key) {
+  return new Promise(resolve => {
+    chrome.storage.local.get([key], res => resolve(res[key]));
+  });
+}
+
+// ----------------------------------------------------
+// SMART AUTO-SELECT CONNECTION LATENCY RUNNER
+// ----------------------------------------------------
+let smartIntervalId = null;
+
+function startSmartAutoSelectChecker() {
+  if (smartIntervalId) {
+    clearInterval(smartIntervalId);
+    smartIntervalId = null;
+  }
+
+  chrome.storage.local.get(['activeProfileId'], (res) => {
+    if (res.activeProfileId === 'smart-auto-select') {
+      // Check latency of all proxies every 30 seconds
+      smartIntervalId = setInterval(checkAllProxiesLatency, 30000);
+      // Run once immediately on start
+      checkAllProxiesLatency();
+    }
+  });
+}
+
+async function checkAllProxiesLatency() {
+  chrome.storage.local.get(['profiles', 'activeProfileId'], async (res) => {
+    const profiles = res.profiles || {};
+    const profileIds = Object.keys(profiles);
+
+    if (profileIds.length === 0) {
+      chrome.storage.local.set({ fastestProfileId: 'direct' });
+      return;
+    }
+
+    const latencies = {};
+    const backupActiveId = res.activeProfileId;
+
+    // Temporarily unsubscribe global storage listener to prevent event circular loops
+    chrome.storage.onChanged.removeListener(onStorageChange);
+
+    for (const id of profileIds) {
+      const profile = profiles[id];
+      try {
+        // Apply temporary proxy settings for this specific server test
+        let config = {
+          mode: 'fixed_servers',
+          rules: {
+            singleProxy: {
+              scheme: profile.scheme || 'http',
+              host: profile.host,
+              port: parseInt(profile.port)
+            },
+            bypassList: []
+          }
+        };
+        await new Promise(resolve => chrome.proxy.settings.set({ value: config, scope: 'regular' }, resolve));
+
+        // Measure ping duration
+        const start = Date.now();
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+
+        const response = await fetch('https://clients3.google.com/generate_204', {
+          method: 'GET',
+          mode: 'no-cors',
+          cache: 'no-store',
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        if (response) {
+          latencies[id] = Date.now() - start;
+        } else {
+          latencies[id] = 9999;
+        }
+      } catch (e) {
+        latencies[id] = 9999;
+      }
+    }
+
+    // Determine the profile with the lowest latency
+    let fastestId = 'direct';
+    let lowestLatency = 9999;
+
+    profileIds.forEach(id => {
+      if (latencies[id] < lowestLatency && latencies[id] < 4000) {
+        lowestLatency = latencies[id];
+        fastestId = id;
+      }
+    });
+
+    // Save measured speeds and fastest target
+    chrome.storage.local.set({
+      proxyLatencies: latencies,
+      fastestProfileId: fastestId
+    }, () => {
+      // Re-subscribe the change listener
+      chrome.storage.onChanged.addListener(onStorageChange);
+      // Re-apply final correct settings
+      applyProxySettings();
+    });
+  });
+}
+
+// ----------------------------------------------------
+// DYNAMIC IP PROXY ROTATION CYCLER
+// ----------------------------------------------------
+let rotationIntervalId = null;
+
+function startProxyRotation() {
+  if (rotationIntervalId) {
+    clearInterval(rotationIntervalId);
+    rotationIntervalId = null;
+  }
+
+  chrome.storage.local.get(['activeProfileId', 'rotationEnabled', 'rotationInterval'], (res) => {
+    const enabled = res.rotationEnabled || false;
+    const interval = parseInt(res.rotationInterval || 300000);
+    const activeId = res.activeProfileId;
+
+    if (enabled && activeId === 'rotation') {
+      rotationIntervalId = setInterval(cycleProxyRotation, interval);
+    }
+  });
+}
+
+function cycleProxyRotation() {
+  chrome.storage.local.get(['profiles', 'rotationActiveId'], (res) => {
+    const profiles = res.profiles || {};
+    const profileIds = Object.keys(profiles);
+
+    if (profileIds.length === 0) return;
+
+    let nextIndex = 0;
+    const currentId = res.rotationActiveId;
+    const currentIndex = profileIds.indexOf(currentId);
+
+    if (currentIndex > -1) {
+      nextIndex = (currentIndex + 1) % profileIds.length;
+    }
+
+    const nextId = profileIds[nextIndex];
+    chrome.storage.local.set({ rotationActiveId: nextId }, () => {
+      applyProxySettings();
     });
   });
 }

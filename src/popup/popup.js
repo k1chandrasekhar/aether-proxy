@@ -90,6 +90,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       // Initialize Active Tab Quick Routing, Cookies, and Trackers
       initActiveTabRoutingAndErrors();
+
+      // Trigger GeoIP lookup
+      fetchGeoIP();
     });
   });
 
@@ -148,6 +151,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (profileId === 'auto-switch') {
       label = 'Auto Switch';
       statusClass = 'switch';
+    } else if (profileId === 'smart-auto-select') {
+      label = 'Smart Auto-Select';
+      statusClass = 'smart';
     } else if (profileId !== 'system') {
       if (targetItem) {
         label = targetItem.querySelector('.profile-name').textContent;
@@ -395,5 +401,50 @@ document.addEventListener('DOMContentLoaded', async () => {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  // 100% Secure read-only Geo-IP Lookup
+  function fetchGeoIP() {
+    const badge = document.getElementById('geoip-badge');
+    if (!badge) return;
+
+    badge.textContent = 'Locating...';
+    badge.style.opacity = '0.7';
+
+    fetch('https://freeipapi.com/api/json')
+      .then(res => {
+        if (!res.ok) throw new Error('API Rate Limit or Offline');
+        return res.json();
+      })
+      .then(data => {
+        const ip = data.ipAddress || 'Unknown IP';
+        const country = data.countryName || 'Unknown';
+        const city = data.cityName || '';
+        const flag = getFlagEmoji(data.countryCode);
+        
+        const locationStr = city ? `${city}, ${country}` : country;
+        badge.textContent = `${ip} • ${locationStr} ${flag}`;
+        badge.setAttribute('title', `IP Address: ${ip}\nLocation: ${locationStr}\nISP: ${data.isp || 'Local Network'}`);
+        badge.style.opacity = '1';
+      })
+      .catch(err => {
+        console.error('GeoIP lookup failed:', err);
+        badge.textContent = 'DIRECT / Offline';
+        badge.setAttribute('title', 'Offline or direct connection. Unable to retrieve tunnel GeoIP.');
+        badge.style.opacity = '0.6';
+      });
+  }
+
+  function getFlagEmoji(countryCode) {
+    if (!countryCode || countryCode === '-') return '🌐';
+    try {
+      const codePoints = countryCode
+        .toUpperCase()
+        .split('')
+        .map(char => 127397 + char.charCodeAt(0));
+      return String.fromCodePoint(...codePoints);
+    } catch (e) {
+      return '🌐';
+    }
   }
 });

@@ -649,3 +649,34 @@ body.light-theme ::-webkit-scrollbar-thumb {
 body.light-theme ::-webkit-scrollbar-thumb:hover {
   background: rgba(15, 23, 42, 0.25);
 }
+
+/* ----------------------------------------------------
+   GEO-IP BADGE & SMART AUTO SELECT STYLES
+   ---------------------------------------------------- */
+.geoip-badge {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-top: 2px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+body.light-theme .geoip-badge {
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--text-secondary);
+}
+
+.profile-bullet.smart {
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.5);
+}
+
+.status-light.smart {
+  background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
+}

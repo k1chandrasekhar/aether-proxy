@@ -30,6 +30,10 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.886H3.883l5.068 3.682-1.937 5.962L12 14.84l4.986 3.69-1.937-5.962 5.068-3.682h-6.205L12 3z"/></svg>
           <span>Auto Switch Rules</span>
         </button>
+        <button class="nav-btn" data-tab="simulator" data-tooltip="Routing Simulator">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 16 4-4 4 4-4-4v9"/><path d="M12 2v20"/><path d="m20 8-4 4-4-4 4 4V3"/></svg>
+          <span>Routing Simulator</span>
+        </button>
         <button class="nav-btn" data-tab="privacy" data-tooltip="Privacy & Security">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span>Privacy & Security</span>
@@ -56,10 +60,16 @@
       <section id="tab-profiles" class="tab-section active">
         <div class="section-header">
           <h2 class="section-title">Proxy Profiles</h2>
-          <button id="add-profile-btn" class="btn btn-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
-            <span>Add Proxy Profile</span>
-          </button>
+          <div style="display: flex; gap: 8px;">
+            <button id="import-token-btn" class="btn btn-secondary" style="display: flex; align-items: center; gap: 4px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+              <span>Import Token</span>
+            </button>
+            <button id="add-profile-btn" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+              <span>Add Proxy Profile</span>
+            </button>
+          </div>
         </div>
 
         <div class="manager-layout">
@@ -133,6 +143,10 @@
               <div class="form-actions">
                 <button type="button" id="delete-profile-btn" class="btn btn-danger">Delete Profile</button>
                 <div style="display: flex; gap: 10px; margin-left: auto;">
+                  <button type="button" id="share-profile-btn" class="btn btn-secondary" style="display: flex; align-items: center; gap: 4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>
+                    <span>Share</span>
+                  </button>
                   <button type="button" id="ping-profile-btn" class="btn btn-secondary">Test Connection</button>
                   <button type="submit" class="btn btn-primary">Save Profile Settings</button>
                 </div>
@@ -264,7 +278,7 @@
           </div>
 
           <!-- Health Check Card -->
-          <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; flex-direction: column; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
               <div style="flex: 1; padding-right: 20px;">
                 <h3 class="card-title" style="margin-bottom: 6px;">Active Proxy Health Monitor</h3>
@@ -297,15 +311,110 @@
               </div>
             </div>
           </div>
+
+          <!-- Card: Proxy Rotation -->
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div style="flex: 1; padding-right: 20px;">
+                <h3 class="card-title" style="margin-bottom: 6px;">Dynamic Proxy Rotation</h3>
+                <p class="card-desc" style="margin: 0; line-height: 1.5;">Automatically cycle through your custom proxy profiles at regular intervals. This enhances your anonymity by rotating active IP addresses in the background.</p>
+              </div>
+              <label class="switch-toggle">
+                <input type="checkbox" id="rotation-toggle">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+
+            <div id="rotation-config-area" style="display: none; padding-top: 10px; flex-direction: column; gap: 16px;">
+              <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="form-group">
+                  <label class="form-label" for="rotation-interval-select">Rotation Interval</label>
+                  <select id="rotation-interval-select" class="form-select">
+                    <option value="60000">Every 1 Minute</option>
+                    <option value="300000" selected>Every 5 Minutes</option>
+                    <option value="600000">Every 10 Minutes</option>
+                    <option value="1800000">Every 30 Minutes</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Rotation Method</label>
+                  <select id="rotation-method-select" class="form-select" disabled>
+                    <option value="round-robin" selected>Round Robin (Sequential)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <button id="save-privacy-btn" class="btn btn-primary" style="margin-top: 20px;">Save Privacy Settings</button>
         <div id="privacy-status-msg" class="status-msg" style="display: none; margin-top: 16px;"></div>
       </section>
 
+      <!-- Tab: Routing Simulator -->
+      <section id="tab-simulator" class="tab-section">
+        <div class="section-header">
+          <h2 class="section-title">Routing Simulator & Rule Debugger</h2>
+        </div>
+
+        <div class="glass-panel" style="padding: 24px;">
+          <p class="card-desc" style="margin-bottom: 20px;">Test and trace exactly how AetherProxy handles routing for any URL. Enter a URL below to run a step-by-step routing simulation based on your configured profiles and wildcard rules.</p>
+          
+          <div class="form-group" style="display: flex; gap: 10px; align-items: flex-end; max-width: 600px;">
+            <div style="flex: 1;">
+              <label class="form-label" for="simulator-url-input">Test URL</label>
+              <input type="text" id="simulator-url-input" class="form-input" placeholder="e.g. https://www.google.com/search?q=aether">
+            </div>
+            <button id="run-simulation-btn" class="btn btn-primary" style="height: 38px;">Run Simulation</button>
+          </div>
+
+          <div id="simulator-results" style="display: none; margin-top: 30px;">
+            <h3 class="card-title" style="margin-bottom: 16px;">Simulation Trace Results</h3>
+            <div class="simulator-trace-tree" id="simulator-trace-tree">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
 
   </div>
+  
+  <!-- Share Modal Overlay -->
+  <div id="share-modal" class="modal-overlay" style="display: none;">
+    <div class="glass-panel modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">Share Proxy Profile</h3>
+        <button id="close-share-modal-btn" class="icon-btn" title="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Share this proxy server profile with other AetherProxy users. This configuration is encoded and processed 100% locally in your browser.</p>
+        
+        <div class="share-options-container">
+          <!-- QR Code Canvas Container -->
+          <div class="qr-container">
+            <canvas id="share-qr-canvas" width="150" height="150"></canvas>
+            <span class="form-tip" style="margin-top: 6px;">Scan to import instantly</span>
+          </div>
+
+          <!-- Base64 Token Container -->
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+            <div class="form-group">
+              <label class="form-label" for="share-token-input">Base64 Share Token</label>
+              <input type="text" id="share-token-input" class="form-input" readonly style="font-family: monospace; font-size: 10px;">
+            </div>
+            <button id="copy-share-token-btn" class="btn btn-secondary" style="font-size: 11px; padding: 6px 12px;">Copy Token to Clipboard</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="qrcode.min.js"></script>
   <script type="module" src="./src/options/options.js"></script>
 </body>
 </html>

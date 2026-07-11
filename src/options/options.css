@@ -910,3 +910,186 @@ body.light-theme [data-tooltip]::after {
   color: var(--text-primary);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
+
+/* ----------------------------------------------------
+   ROUTING SIMULATOR & TIMELINE FLOW
+   ---------------------------------------------------- */
+.simulator-trace-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  padding-left: 20px;
+  margin-top: 15px;
+}
+
+.simulator-trace-tree::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+body.light-theme .simulator-trace-tree::before {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.trace-step {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  gap: 12px;
+  animation: traceFadeIn 0.3s ease-out;
+}
+
+@keyframes traceFadeIn {
+  from { opacity: 0; transform: translateX(-5px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.trace-step-bullet {
+  position: absolute;
+  left: -20px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  border: 2px solid var(--bg-secondary);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+  z-index: 2;
+}
+
+body.light-theme .trace-step-bullet {
+  border-color: white;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.03);
+}
+
+.trace-step.matched .trace-step-bullet {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.trace-step.skipped .trace-step-bullet {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+body.light-theme .trace-step.skipped .trace-step-bullet {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.trace-step.final .trace-step-bullet {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.trace-step-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.trace-step-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.trace-step-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* ----------------------------------------------------
+   MODAL OVERLAY & CARD (100% LOCAL SHARER)
+   ---------------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  width: 480px;
+  max-width: 90%;
+  border-radius: 12px;
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+@keyframes modalSlideUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.share-options-container {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.qr-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: white;
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
+}
+
+.qr-container canvas {
+  background: white;
+}
+
+.qr-container .form-tip {
+  color: #475569;
+  font-size: 9.5px;
+  font-weight: 600;
+}
+
+body.light-theme .modal-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
