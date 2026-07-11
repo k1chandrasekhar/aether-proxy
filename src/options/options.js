@@ -206,6 +206,9 @@ function loadProfileToEditor(id) {
   // Highlight selected tab
   document.querySelectorAll('.profile-tab').forEach(tab => tab.classList.remove('active'));
   renderProfilesList();
+
+  // Draw latency history graph
+  drawLatencyGraph(id);
 }
 
 function createNewProfile() {
@@ -370,6 +373,20 @@ async function testProxyPing() {
 
     if (fetchResult) {
       showPingStatus(`🟢 Connection Succeeded! Latency: ${elapsed}ms`, 'success');
+      
+      // Update local ping histories in storage
+      chrome.storage.local.get(['pingHistories'], (resHist) => {
+        const histories = resHist.pingHistories || {};
+        const history = histories[id] || [];
+        history.push(elapsed);
+        if (history.length > 10) history.shift(); // keep last 10
+        histories[id] = history;
+        chrome.storage.local.set({ pingHistories: histories }, () => {
+          drawLatencyGraph(id);
+          // Re-render profiles list to show active latency badge immediately
+          renderProfilesList();
+        });
+      });
     } else {
       showPingStatus(`🔴 Connection failed or refused by proxy.`, 'failed');
     }
@@ -1116,15 +1133,38 @@ function initSharingAndImport() {
 
       // Draw offline QR code on canvas using local script (zero network calls)
       try {
-        const qr = qrcode(4, 'L');
+        const qr = qrcode(0, 'L'); // Auto calculate version
         qr.addData(token);
         qr.make();
         
         const ctx = qrCanvas.getContext('2d');
-        ctx.clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+        const canvasSize = 150;
+        qrCanvas.width = canvasSize;
+        qrCanvas.height = canvasSize;
+        ctx.clearRect(0, 0, canvasSize, canvasSize);
         
-        // Render modules
-        qr.renderTo2dContext(ctx, 4); // 4px cell size
+        const moduleCount = qr.getModuleCount();
+        const cellSize = Math.floor(canvasSize / moduleCount);
+        const margin = Math.floor((canvasSize - (moduleCount * cellSize)) / 2);
+        
+        // Draw white background
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvasSize, canvasSize);
+        
+        // Draw black code dots
+        ctx.fillStyle = 'black';
+        for (let row = 0; row < moduleCount; row++) {
+          for (let col = 0; col < moduleCount; col++) {
+            if (qr.isDark(row, col)) {
+              ctx.fillRect(
+                margin + col * cellSize,
+                margin + row * cellSize,
+                cellSize,
+                cellSize
+              );
+            }
+          }
+        }
       } catch (err) {
         console.error('Failed to generate offline QR code:', err);
       }
@@ -1206,4 +1246,101 @@ function checkQueryImport() {
       console.error('Failed to parse query import link:', e);
     }
   }
+}
+
+// Draw HTML5 Canvas latency history line graph
+function drawLatencyGraph(profileId) {
+  const container = document.getElementById('latency-graph-container');
+  const canvas = document.getElementById('latency-history-canvas');
+  if (!container || !canvas) return;
+
+  chrome.storage.local.get(['pingHistories'], (result) => {
+    const histories = result.pingHistories || {};
+    const history = histories[profileId] || [];
+
+    if (history.length === 0) {
+      container.style.display = 'none';
+      return;
+    }
+
+    container.style.display = 'flex';
+    const ctx = canvas.getContext('2d');
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const padding = 20;
+    const graphWidth = canvas.width - padding * 2;
+    const graphHeight = canvas.height - padding * 2;
+
+    // Find min and max latency for scaling
+    let maxLatency = Math.max(...history, 100);
+    let minLatency = 0;
+    
+    // Pad max latency slightly
+    maxLatency = Math.ceil(maxLatency * 1.2);
+
+    // Draw grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 2; i++) {
+      const y = padding + (graphHeight / 2) * i;
+      ctx.beginPath();
+      ctx.moveTo(padding, y);
+      ctx.lineTo(canvas.width - padding, y);
+      ctx.stroke();
+
+      // Label values
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.font = '8px sans-serif';
+      const labelVal = Math.round(maxLatency - (maxLatency / 2) * i);
+      ctx.fillText(`${labelVal}ms`, padding - 15, y + 3);
+    }
+
+    // Plot points
+    ctx.beginPath();
+    history.forEach((ms, index) => {
+      const x = padding + (graphWidth / (history.length - 1 || 1)) * index;
+      const y = padding + graphHeight - (ms / maxLatency) * graphHeight;
+
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+
+    // Stroke the line
+    ctx.strokeStyle = '#6366f1'; // Indigo color
+    ctx.lineWidth = 2.5;
+    ctx.shadowColor = 'rgba(99, 102, 241, 0.4)';
+    ctx.shadowBlur = 6;
+    ctx.stroke();
+    ctx.shadowBlur = 0; // Reset shadow
+
+    // Fill area below the line with gradient
+    ctx.lineTo(padding + graphWidth, padding + graphHeight);
+    ctx.lineTo(padding, padding + graphHeight);
+    ctx.closePath();
+    
+    const gradient = ctx.createLinearGradient(0, padding, 0, padding + graphHeight);
+    gradient.addColorStop(0, 'rgba(99, 102, 241, 0.2)');
+    gradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Draw circles on the points
+    history.forEach((ms, index) => {
+      const x = padding + (graphWidth / (history.length - 1 || 1)) * index;
+      const y = padding + graphHeight - (ms / maxLatency) * graphHeight;
+
+      ctx.beginPath();
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#818cf8';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+  });
 }
